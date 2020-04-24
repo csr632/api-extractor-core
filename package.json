@@ -1,0 +1,7 @@
+{
+  "name": "test-api-extractor",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Sirui Chen <632882184@qq.com>",
+  "license": "MIT"
+}
