@@ -3,7 +3,7 @@
 
 import * as path from 'path';
 import * as ts from 'typescript';
-import colors = require('colors');
+import colors from 'colors';
 
 import {
   JsonFile

@@ -283,6 +283,7 @@ export class MessageRouter {
           const serializedValue: any = MessageRouter.buildJsonDumpObject(value);
 
           if (serializedValue !== undefined) {
+            // @ts-ignore
             outputObject[key] = serializedValue;
           }
         }

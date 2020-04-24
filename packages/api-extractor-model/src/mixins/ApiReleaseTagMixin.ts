@@ -78,6 +78,7 @@ export function ApiReleaseTagMixin<TBaseClass extends IApiItemConstructor>(baseC
 
       baseClass.onDeserializeInto(options, context, jsonObject);
 
+      // @ts-ignore
       const deserializedReleaseTag: ReleaseTag | undefined = ReleaseTag[jsonObject.releaseTag];
       if (deserializedReleaseTag === undefined) {
         throw new Error(`Failed to deserialize release tag ${JSON.stringify(jsonObject.releaseTag)}`);
