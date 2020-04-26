@@ -10,17 +10,17 @@
   "main": "lib/index.js",
   "license": "MIT",
   "scripts": {
-    "build": "tsc"
+    "build": "rm -rf lib && tsc"
   },
   "dependencies": {
     "@microsoft/tsdoc": "0.12.19",
-    "@rushstack/node-core-library": "3.19.7"
+    "timsort": "^0.3.0"
   },
   "devDependencies": {
     "@microsoft/rush-stack-compiler-3.5": "0.4.4",
     "@rushstack/eslint-config": "0.5.7",
     "@types/jest": "23.3.11",
-    "@types/node": "10.17.13",
+    "@types/timsort": "^0.3.0",
     "typescript": "^3.8.3"
   }
 }

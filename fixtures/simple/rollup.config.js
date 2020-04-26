@@ -7,14 +7,24 @@ export default {
   input: "src/index.ts",
   output: {
     dir: "dist",
-    format: "esm",
+    format: "iife",
   },
-  plugins: [typescript(), resolve(), commonjs()],
-  external: ["@microsoft/tsdoc", "@rushstack/node-core-library"],
+  plugins: [
+    typescript(),
+    resolve(),
+    commonjs({
+      namedExports: {
+        timsort: ["sort"],
+      },
+    }),
+  ],
   onwarn(warning, rollupWarn) {
     if (
       warning.code === "CIRCULAR_DEPENDENCY" &&
-      warning.cycle.some((c) => /model\/Deserializer/.test(c))
+      (false ||
+        // warning.cycle.some((c) => /items\/ApiItem/.test(c)) ||
+        warning.cycle.some((c) => /@microsoft\/tsdoc/.test(c)) ||
+        false)
     ) {
       return;
     }

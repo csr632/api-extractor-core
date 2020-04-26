@@ -2,7 +2,7 @@
 // See LICENSE in the project root for license information.
 
 import { DeclarationReference } from '@microsoft/tsdoc/lib/beta/DeclarationReference';
-import { Text } from '@rushstack/node-core-library';
+import { Text } from '@csr632/common-helpers';
 
 /** @public */
 export const enum ExcerptTokenKind {

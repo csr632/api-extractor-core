@@ -53,11 +53,6 @@ export enum ApiJsonSchemaVersion {
 
 export class DeserializerContext {
   /**
-   * The path of the file being deserialized, which may be useful for diagnostic purposes.
-   */
-  public readonly apiJsonFilename: string;
-
-  /**
    * Metadata from `IApiPackageMetadataJson.toolPackage`.
    */
   public readonly toolPackage: string;
@@ -73,7 +68,6 @@ export class DeserializerContext {
   public readonly versionToDeserialize: ApiJsonSchemaVersion;
 
   public constructor(options: DeserializerContext) {
-    this.apiJsonFilename = options.apiJsonFilename;
     this.toolPackage = options.toolPackage;
     this.toolVersion = options.toolVersion;
     this.versionToDeserialize = options.versionToDeserialize;

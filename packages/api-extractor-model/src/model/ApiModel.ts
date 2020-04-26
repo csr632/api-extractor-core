@@ -4,8 +4,8 @@
 import { DeclarationReference } from '@microsoft/tsdoc/lib/beta/DeclarationReference';
 import { ApiItem, ApiItemKind } from '../items/ApiItem';
 import { ApiItemContainerMixin } from '../mixins/ApiItemContainerMixin';
-import { ApiPackage } from './ApiPackage';
-import { PackageName } from '@rushstack/node-core-library';
+import { ApiPackage, IApiPackageJson } from './ApiPackage';
+import { PackageName } from '@csr632/common-helpers';
 import { ModelReferenceResolver, IResolveDeclarationReferenceResult } from './ModelReferenceResolver';
 import { DocDeclarationReference } from '@microsoft/tsdoc';
 
@@ -60,8 +60,8 @@ export class ApiModel extends ApiItemContainerMixin(ApiItem) {
     this._resolver = new ModelReferenceResolver(this);
   }
 
-  public loadPackage(apiJsonFilename: string): ApiPackage {
-    const apiPackage: ApiPackage = ApiPackage.loadFromJsonFile(apiJsonFilename);
+  public loadPackageFromJsonObject(apiPackageJson: IApiPackageJson): ApiPackage {
+    const apiPackage: ApiPackage = ApiPackage.loadFromJsonObject(apiPackageJson);
     this.addMember(apiPackage);
     return apiPackage;
   }

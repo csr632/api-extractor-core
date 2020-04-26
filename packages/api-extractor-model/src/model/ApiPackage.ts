@@ -4,7 +4,6 @@
 import { DeclarationReference } from '@microsoft/tsdoc/lib/beta/DeclarationReference';
 import { ApiItem, ApiItemKind, IApiItemJson } from '../items/ApiItem';
 import { ApiItemContainerMixin, IApiItemContainerMixinOptions } from '../mixins/ApiItemContainerMixin';
-import { JsonFile, IJsonFileSaveOptions, PackageJsonLookup, IPackageJson } from '@rushstack/node-core-library';
 import { ApiDocumentedItem, IApiDocumentedItemOptions } from '../items/ApiDocumentedItem';
 import { ApiEntryPoint } from './ApiEntryPoint';
 import { IApiNameMixinOptions, ApiNameMixin } from '../mixins/ApiNameMixin';
@@ -67,7 +66,7 @@ export interface IApiPackageJson extends IApiItemJson {
  * Options for {@link ApiPackage.saveToJsonFile}.
  * @public
  */
-export interface IApiPackageSaveOptions extends IJsonFileSaveOptions {
+export interface IApiPackageSaveOptions {
   /**
    * Optionally specifies a value for the "toolPackage" field in the output .api.json data file;
    * otherwise, the value will be "api-extractor-model".
@@ -106,20 +105,18 @@ export class ApiPackage extends ApiItemContainerMixin(ApiNameMixin(ApiDocumented
     super(options);
   }
 
-  public static loadFromJsonFile(apiJsonFilename: string): ApiPackage {
-    const jsonObject: IApiPackageJson = JsonFile.load(apiJsonFilename);
-
+  public static loadFromJsonObject(jsonObject: IApiPackageJson): ApiPackage {
     if (!jsonObject
       || !jsonObject.metadata
       || typeof jsonObject.metadata.schemaVersion !== 'number') {
-        throw new Error(`Error loading ${apiJsonFilename}:`
+        throw new Error(`Error loading ApiPackage:`
         + `\nThe file format is not recognized; the "metadata.schemaVersion" field is missing or invalid`);
     }
 
     const schemaVersion: number = jsonObject.metadata.schemaVersion;
 
     if (schemaVersion < ApiJsonSchemaVersion.OLDEST_SUPPORTED) {
-      throw new Error(`Error loading ${apiJsonFilename}:`
+      throw new Error(`Error loading ApiPackage:`
         + `\nThe file format is version ${schemaVersion},`
         + ` whereas ${ApiJsonSchemaVersion.OLDEST_SUPPORTED} is the oldest version supported by this tool`);
     }
@@ -128,7 +125,7 @@ export class ApiPackage extends ApiItemContainerMixin(ApiNameMixin(ApiDocumented
     if (jsonObject.metadata.oldestForwardsCompatibleVersion) {
       // Sanity check
       if (jsonObject.metadata.oldestForwardsCompatibleVersion > schemaVersion) {
-        throw new Error(`Error loading ${apiJsonFilename}:`
+        throw new Error(`Error loading ApiPackage:`
         + `\nInvalid file format; "oldestForwardsCompatibleVersion" cannot be newer than "schemaVersion"`);
       }
       oldestForwardsCompatibleVersion = jsonObject.metadata.oldestForwardsCompatibleVersion;
@@ -142,14 +139,13 @@ export class ApiPackage extends ApiItemContainerMixin(ApiNameMixin(ApiDocumented
 
       if (versionToDeserialize > ApiJsonSchemaVersion.LATEST) {
         // Nope, still too new
-        throw new Error(`Error loading ${apiJsonFilename}:`
+        throw new Error(`Error loading ApiPackage:`
         + `\nThe file format version ${schemaVersion} was written by a newer release of`
         + ` the api-extractor-model library; you may need to upgrade your software`);
       }
     }
 
     const context: DeserializerContext = new DeserializerContext({
-      apiJsonFilename,
       toolPackage: jsonObject.metadata.toolPackage,
       toolVersion: jsonObject.metadata.toolVersion,
       versionToDeserialize: versionToDeserialize
@@ -185,25 +181,23 @@ export class ApiPackage extends ApiItemContainerMixin(ApiNameMixin(ApiDocumented
     return this.findMembersByName(importPath) as ReadonlyArray<ApiEntryPoint>;
   }
 
-  public saveToJsonFile(apiJsonFilename: string, options?: IApiPackageSaveOptions): void {
+  public getJsonObject(options?: IApiPackageSaveOptions): IApiPackageJson {
     if (!options) {
       options = {};
     }
 
-    const packageJson: IPackageJson = PackageJsonLookup.loadOwnPackageJson(__dirname);
-
     const jsonObject: IApiPackageJson = {
       metadata: {
-        toolPackage: options.toolPackage || packageJson.name,
+        toolPackage: options.toolPackage,
         // In test mode, we don't write the real version, since that would cause spurious diffs whenever
         // the version is bumped.  Instead we write a placeholder string.
-        toolVersion: options.testMode ? '[test mode]' : options.toolVersion || packageJson.version,
+        toolVersion: options.testMode ? '[test mode]' : options.toolVersion,
         schemaVersion: ApiJsonSchemaVersion.LATEST,
         oldestForwardsCompatibleVersion: ApiJsonSchemaVersion.OLDEST_FORWARDS_COMPATIBLE
       }
     } as IApiPackageJson;
     this.serializeInto(jsonObject);
-    JsonFile.save(jsonObject, apiJsonFilename, options);
+    return jsonObject;
   }
 
   /** @beta @override */

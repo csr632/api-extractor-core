@@ -11,7 +11,9 @@ import {
 } from '../items/ApiItem';
 import { ApiNameMixin } from './ApiNameMixin';
 import { DeserializerContext } from '../model/DeserializerContext';
-import { InternalError, LegacyAdapters } from '@rushstack/node-core-library';
+import { InternalError } from '@csr632/common-helpers';
+import * as timsort from 'timsort';
+
 
 /**
  * Constructor options for {@link (ApiItemContainerMixin:interface)}.
@@ -145,7 +147,8 @@ export function ApiItemContainerMixin<TBaseClass extends IApiItemConstructor>(ba
 
     public get members(): ReadonlyArray<ApiItem> {
       if (!this[_membersSorted]) {
-        LegacyAdapters.sortStable(this[_members], (x, y) => x.getSortKey().localeCompare(y.getSortKey()));
+        // stable sort
+        timsort.sort(this[_members], (x, y) => x.getSortKey().localeCompare(y.getSortKey()));
         this[_membersSorted] = true;
       }
 

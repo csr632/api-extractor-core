@@ -4,10 +4,13 @@
 import { DeclarationReference } from '@microsoft/tsdoc/lib/beta/DeclarationReference';
 import { Constructor, PropertiesOf } from '../mixins/Mixin';
 import { ApiPackage } from '../model/ApiPackage';
-import { ApiParameterListMixin } from '../mixins/ApiParameterListMixin';
 import { DeserializerContext } from '../model/DeserializerContext';
-import { InternalError } from '@rushstack/node-core-library';
+import { InternalError } from '@csr632/common-helpers';
+// These three classes may introduce some circular imports:
+// ApiParameterListMixin, ApiItemContainerMixin, Deserializer
+import { ApiParameterListMixin } from '../mixins/ApiParameterListMixin';
 import { ApiItemContainerMixin } from '../mixins/ApiItemContainerMixin';
+import { Deserializer } from "../model/Deserializer";
 
 /**
  * The type returned by the {@link ApiItem.kind} property, which can be used to easily distinguish subclasses of
@@ -71,11 +74,7 @@ export class ApiItem {
   }
 
   public static deserialize(jsonObject: IApiItemJson, context: DeserializerContext): ApiItem {
-    // The Deserializer class is coupled with a ton of other classes, so  we delay loading it
-    // to avoid ES5 circular imports.
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const deserializerModule: typeof import('../model/Deserializer') = require('../model/Deserializer');
-    return deserializerModule.Deserializer.deserialize(context, jsonObject);
+    return Deserializer.deserialize(context, jsonObject);
   }
 
   /** @virtual */

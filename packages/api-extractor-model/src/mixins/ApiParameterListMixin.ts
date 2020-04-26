@@ -5,7 +5,7 @@ import { ApiItem, IApiItemJson, IApiItemConstructor, IApiItemOptions } from '../
 import { Parameter } from '../model/Parameter';
 import { ApiDeclaredItem } from '../items/ApiDeclaredItem';
 import { IExcerptTokenRange } from './Excerpt';
-import { InternalError } from '@rushstack/node-core-library';
+import { InternalError } from '@csr632/common-helpers';
 import { DeserializerContext } from '../model/DeserializerContext';
 
 /**
