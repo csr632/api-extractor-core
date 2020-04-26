@@ -5,9 +5,11 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
-    "rollup": "rollup -c"
+    "rollup": "rollup -c",
+    "debug": "npx --node-arg=--inspect-brk rollup -c"
   },
   "devDependencies": {
+    "@rollup/plugin-commonjs": "^11.1.0",
     "@rollup/plugin-node-resolve": "^7.1.3",
     "@rollup/plugin-typescript": "^4.1.1",
     "rollup": "^2.7.2",

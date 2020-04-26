@@ -1,5 +1,3 @@
-import { a } from "./utils";
+import { ApiModel, ApiPackage } from '@microsoft/api-extractor-model';
 
-let b: number = a + 2;
-
-console.log(b)
+console.log(ApiModel, ApiPackage)
