@@ -3,10 +3,14 @@
   "version": "1.0.0",
   "private": true,
   "workspaces": [
-    "packages/*",
+    "packages/common-helpers",
+    "packages/api-extractor-model",
     "fixtures/*"
   ],
   "main": "index.js",
+  "scripts": {
+    "boot": "yarn && yarn workspaces run prepare"
+  },
   "author": "Sirui Chen <632882184@qq.com>",
   "license": "MIT"
 }

@@ -29,7 +29,7 @@
   },
   "license": "MIT",
   "scripts": {
-    "build": "tsc"
+    "prepare": "rm -rf lib && tsc"
   },
   "dependencies": {
     "@microsoft/api-extractor-model": "7.7.11",

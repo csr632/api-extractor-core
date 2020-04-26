@@ -10,7 +10,7 @@
   "main": "lib/index.js",
   "license": "MIT",
   "scripts": {
-    "build": "rm -rf lib && tsc"
+    "prepare": "rm -rf lib && tsc"
   },
   "dependencies": {
     "@microsoft/tsdoc": "0.12.19",
