@@ -6,7 +6,7 @@
 npm run boot
 ```
 
-go to `fixtures/simple`
+go to `fixtures/api-extractor-model`
 
 ```sh
 npm run serve
