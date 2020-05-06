@@ -16,65 +16,43 @@ export { ReleaseTag } from './aedoc/ReleaseTag';
 // items
 export {
   IApiDeclaredItemOptions,
-  ApiDeclaredItem
-} from './items/ApiDeclaredItem';
-export {
+  ApiDeclaredItem,
   IApiDocumentedItemOptions,
-  ApiDocumentedItem
-} from './items/ApiDocumentedItem';
-export {
+  ApiDocumentedItem,
   ApiItemKind,
   IApiItemOptions,
   ApiItem,
-  IApiItemConstructor
-} from './items/ApiItem';
-export {
+  IApiItemConstructor,
   IApiPropertyItemOptions,
   ApiPropertyItem
-} from './items/ApiPropertyItem';
+} from './__index';
 
 // mixins
 export {
   IApiParameterListMixinOptions,
   IApiParameterOptions,
-  ApiParameterListMixin
-} from './mixins/ApiParameterListMixin';
-export {
+  ApiParameterListMixin,
   IApiTypeParameterOptions,
   IApiTypeParameterListMixinOptions,
-  ApiTypeParameterListMixin
-} from './mixins/ApiTypeParameterListMixin';
-export {
+  ApiTypeParameterListMixin,
   IApiItemContainerMixinOptions,
-  ApiItemContainerMixin
-} from './mixins/ApiItemContainerMixin';
-export {
+  ApiItemContainerMixin,
   IApiReleaseTagMixinOptions,
-  ApiReleaseTagMixin
-} from './mixins/ApiReleaseTagMixin';
-export {
+  ApiReleaseTagMixin,
   IApiReturnTypeMixinOptions,
-  ApiReturnTypeMixin
-} from './mixins/ApiReturnTypeMixin';
-export {
+  ApiReturnTypeMixin,
   IApiStaticMixinOptions,
-  ApiStaticMixin
-} from './mixins/ApiStaticMixin';
-export {
+  ApiStaticMixin,
   IApiNameMixinOptions,
-  ApiNameMixin
-} from './mixins/ApiNameMixin';
-export {
+  ApiNameMixin,
   ExcerptTokenKind,
   IExcerptTokenRange,
   IExcerptToken,
   ExcerptToken,
-  Excerpt
-} from './mixins/Excerpt';
-export {
+  Excerpt,
   Constructor,
   PropertiesOf
-} from './mixins/Mixin';
+} from './__index';
 
 // model
 export {

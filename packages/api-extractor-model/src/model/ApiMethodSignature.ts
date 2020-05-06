@@ -2,13 +2,13 @@
 // See LICENSE in the project root for license information.
 
 import { DeclarationReference, Meaning, Navigation, Component } from '@microsoft/tsdoc/lib/beta/DeclarationReference';
-import { ApiItemKind } from '../items/ApiItem';
-import { ApiDeclaredItem, IApiDeclaredItemOptions } from '../items/ApiDeclaredItem';
-import { ApiParameterListMixin, IApiParameterListMixinOptions } from '../mixins/ApiParameterListMixin';
-import { ApiReleaseTagMixin, IApiReleaseTagMixinOptions } from '../mixins/ApiReleaseTagMixin';
-import { IApiReturnTypeMixinOptions, ApiReturnTypeMixin } from '../mixins/ApiReturnTypeMixin';
-import { IApiNameMixinOptions, ApiNameMixin } from '../mixins/ApiNameMixin';
-import { IApiTypeParameterListMixinOptions, ApiTypeParameterListMixin } from '../mixins/ApiTypeParameterListMixin';
+import { ApiItemKind } from '../__index';
+import { ApiDeclaredItem, IApiDeclaredItemOptions } from '../__index';
+import { ApiParameterListMixin, IApiParameterListMixinOptions } from '../__index';
+import { ApiReleaseTagMixin, IApiReleaseTagMixinOptions } from '../__index';
+import { IApiReturnTypeMixinOptions, ApiReturnTypeMixin } from '../__index';
+import { IApiNameMixinOptions, ApiNameMixin } from '../__index';
+import { IApiTypeParameterListMixinOptions, ApiTypeParameterListMixin } from '../__index';
 
 /** @public */
 export interface IApiMethodSignatureOptions extends

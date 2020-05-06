@@ -2,8 +2,8 @@
 // See LICENSE in the project root for license information.s
 
 import { DeclarationReference } from '@microsoft/tsdoc/lib/beta/DeclarationReference';
-import { ApiDocumentedItem, IApiDocumentedItemJson, IApiDocumentedItemOptions } from './ApiDocumentedItem';
-import { Excerpt, ExcerptToken, IExcerptTokenRange, IExcerptToken } from '../mixins/Excerpt';
+import { ApiDocumentedItem, IApiDocumentedItemJson, IApiDocumentedItemOptions } from '../__index';
+import { Excerpt, ExcerptToken, IExcerptTokenRange, IExcerptToken } from '../__index';
 import { DeserializerContext } from '../model/DeserializerContext';
 
 /**

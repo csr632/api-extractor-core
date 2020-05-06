@@ -2,8 +2,8 @@
 // See LICENSE in the project root for license information.
 
 import { DeclarationReference } from '@microsoft/tsdoc/lib/beta/DeclarationReference';
-import { ApiItem, ApiItemKind } from '../items/ApiItem';
-import { ApiItemContainerMixin } from '../mixins/ApiItemContainerMixin';
+import { ApiItem, ApiItemKind } from '../__index';
+import { ApiItemContainerMixin } from '../__index';
 import { ApiPackage, IApiPackageJson } from './ApiPackage';
 import { PackageName } from '@csr632/common-helpers';
 import { ModelReferenceResolver, IResolveDeclarationReferenceResult } from './ModelReferenceResolver';

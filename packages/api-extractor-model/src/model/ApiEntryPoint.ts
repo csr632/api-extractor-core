@@ -2,9 +2,9 @@
 // See LICENSE in the project root for license information.
 
 import { DeclarationReference } from '@microsoft/tsdoc/lib/beta/DeclarationReference';
-import { ApiItem, ApiItemKind } from '../items/ApiItem';
-import { ApiItemContainerMixin, IApiItemContainerMixinOptions } from '../mixins/ApiItemContainerMixin';
-import { IApiNameMixinOptions, ApiNameMixin } from '../mixins/ApiNameMixin';
+import { ApiItem, ApiItemKind } from '../__index';
+import { ApiItemContainerMixin, IApiItemContainerMixinOptions } from '../__index';
+import { IApiNameMixinOptions, ApiNameMixin } from '../__index';
 import { ApiPackage } from './ApiPackage';
 
 /**

@@ -2,12 +2,12 @@
 // See LICENSE in the project root for license information.
 
 import { DeclarationReference, Meaning, Navigation } from '@microsoft/tsdoc/lib/beta/DeclarationReference';
-import { ApiItemKind } from '../items/ApiItem';
-import { IApiDeclaredItemOptions, ApiDeclaredItem } from '../items/ApiDeclaredItem';
-import { IApiParameterListMixinOptions, ApiParameterListMixin } from '../mixins/ApiParameterListMixin';
-import { IApiReleaseTagMixinOptions, ApiReleaseTagMixin } from '../mixins/ApiReleaseTagMixin';
-import { IApiReturnTypeMixinOptions, ApiReturnTypeMixin } from '../mixins/ApiReturnTypeMixin';
-import { ApiTypeParameterListMixin, IApiTypeParameterListMixinOptions } from '../mixins/ApiTypeParameterListMixin';
+import { ApiItemKind } from '../__index';
+import { IApiDeclaredItemOptions, ApiDeclaredItem } from '../__index';
+import { IApiParameterListMixinOptions, ApiParameterListMixin } from '../__index';
+import { IApiReleaseTagMixinOptions, ApiReleaseTagMixin } from '../__index';
+import { IApiReturnTypeMixinOptions, ApiReturnTypeMixin } from '../__index';
+import { ApiTypeParameterListMixin, IApiTypeParameterListMixinOptions } from '../__index';
 
 /**
  * Constructor options for {@link ApiConstructor}.

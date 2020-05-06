@@ -3,9 +3,9 @@
 
 import * as tsdoc from '@microsoft/tsdoc';
 
-import { ApiDocumentedItem } from '../items/ApiDocumentedItem';
-import { Excerpt } from '../mixins/Excerpt';
-import { ApiParameterListMixin } from '../mixins/ApiParameterListMixin';
+import { ApiDocumentedItem } from '../__index';
+import { Excerpt } from '../__index';
+import { ApiParameterListMixin } from '../__index';
 
 /**
  * Constructor options for {@link Parameter}.

@@ -2,15 +2,15 @@
 // See LICENSE in the project root for license information.
 
 import { DeclarationReference, Meaning, Navigation, Component } from '@microsoft/tsdoc/lib/beta/DeclarationReference';
-import { ApiItemKind } from '../items/ApiItem';
-import { ApiDeclaredItem, IApiDeclaredItemOptions, IApiDeclaredItemJson } from '../items/ApiDeclaredItem';
-import { ApiItemContainerMixin, IApiItemContainerMixinOptions } from '../mixins/ApiItemContainerMixin';
-import { ApiReleaseTagMixin, IApiReleaseTagMixinOptions } from '../mixins/ApiReleaseTagMixin';
-import { IExcerptTokenRange } from '../mixins/Excerpt';
+import { ApiItemKind } from '../__index';
+import { ApiDeclaredItem, IApiDeclaredItemOptions, IApiDeclaredItemJson } from '../__index';
+import { ApiItemContainerMixin, IApiItemContainerMixinOptions } from '../__index';
+import { ApiReleaseTagMixin, IApiReleaseTagMixinOptions } from '../__index';
+import { IExcerptTokenRange } from '../__index';
 import { HeritageType } from './HeritageType';
-import { IApiNameMixinOptions, ApiNameMixin } from '../mixins/ApiNameMixin';
+import { IApiNameMixinOptions, ApiNameMixin } from '../__index';
 import { ApiTypeParameterListMixin, IApiTypeParameterListMixinOptions, IApiTypeParameterListMixinJson
-  } from '../mixins/ApiTypeParameterListMixin';
+  } from '../__index';
 import { DeserializerContext } from './DeserializerContext';
 
 /**

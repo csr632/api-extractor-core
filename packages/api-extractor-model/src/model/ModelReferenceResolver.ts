@@ -2,12 +2,12 @@
 // See LICENSE in the project root for license information.
 
 import { DocDeclarationReference, SelectorKind } from '@microsoft/tsdoc';
-import { ApiItem } from '../items/ApiItem';
+import { ApiItem } from '../__index';
 import { ApiModel } from './ApiModel';
 import { ApiPackage } from './ApiPackage';
 import { ApiEntryPoint } from './ApiEntryPoint';
-import { ApiItemContainerMixin } from '../mixins/ApiItemContainerMixin';
-import { ApiParameterListMixin } from '../mixins/ApiParameterListMixin';
+import { ApiItemContainerMixin } from '../__index';
+import { ApiParameterListMixin } from '../__index';
 
 /**
  * Result object for {@link ApiModel.resolveDeclarationReference}.

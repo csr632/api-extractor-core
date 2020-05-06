@@ -8265,6 +8265,582 @@
 	    ReleaseTag.compare = compare;
 	})(ReleaseTag || (ReleaseTag = {}));
 
+	// Copied from https://github.com/microsoft/rushstack/blob/23864e8f6213c872b88a7af8396e617c22cd9956/libraries/node-core-library/src/PackageName.ts without modification
+	/**
+	 * Various functions for working with package names that may include scopes.
+	 *
+	 * @public
+	 */
+	class PackageName {
+	    /**
+	     * This attempts to parse a package name that may include a scope component.
+	     * The packageName must not be an empty string.
+	     * @remarks
+	     * This function will not throw an exception.
+	     *
+	     * @returns an {@link IParsedPackageNameOrError} structure whose `error` property will be
+	     * nonempty if the string could not be parsed.
+	     */
+	    static tryParse(packageName) {
+	        const result = {
+	            scope: '',
+	            unscopedName: '',
+	            error: ''
+	        };
+	        let input = packageName;
+	        if (input === null || input === undefined) {
+	            result.error = 'The package name must not be null or undefined';
+	            return result;
+	        }
+	        // Rule from npmjs.com:
+	        // "The name must be less than or equal to 214 characters. This includes the scope for scoped packages."
+	        if (packageName.length > 214) {
+	            // Don't attempt to parse a ridiculously long input
+	            result.error = 'The package name cannot be longer than 214 characters';
+	            return result;
+	        }
+	        if (input[0] === '@') {
+	            const indexOfScopeSlash = input.indexOf('/');
+	            if (indexOfScopeSlash <= 0) {
+	                result.scope = input;
+	                result.error = `Error parsing "${packageName}": The scope must be followed by a slash`;
+	                return result;
+	            }
+	            // Extract the scope substring
+	            result.scope = input.substr(0, indexOfScopeSlash);
+	            input = input.substr(indexOfScopeSlash + 1);
+	        }
+	        result.unscopedName = input;
+	        if (result.scope === '@') {
+	            result.error = `Error parsing "${packageName}": The scope name cannot be empty`;
+	            return result;
+	        }
+	        if (result.unscopedName === '') {
+	            result.error = 'The package name must not be empty';
+	            return result;
+	        }
+	        // Rule from npmjs.com:
+	        // "The name can't start with a dot or an underscore."
+	        if (result.unscopedName[0] === '.' || result.unscopedName[0] === '_') {
+	            result.error = `The package name "${packageName}" starts with an invalid character`;
+	            return result;
+	        }
+	        // Convert "@scope/unscoped-name" --> "scopeunscoped-name"
+	        const nameWithoutScopeSymbols = (result.scope ? result.scope.slice(1, -1) : '')
+	            + result.unscopedName;
+	        // "New packages must not have uppercase letters in the name."
+	        // This can't be enforced because "old" packages are still actively maintained.
+	        // Example: https://www.npmjs.com/package/Base64
+	        // However it's pretty reasonable to require the scope to be lower case
+	        if (result.scope !== result.scope.toLowerCase()) {
+	            result.error = `The package scope "${result.scope}" must not contain upper case characters`;
+	            return result;
+	        }
+	        // "The name ends up being part of a URL, an argument on the command line, and a folder name.
+	        // Therefore, the name can't contain any non-URL-safe characters"
+	        const match = nameWithoutScopeSymbols.match(PackageName._invalidNameCharactersRegExp);
+	        if (match) {
+	            result.error = `The package name "${packageName}" contains an invalid character: "${match[0]}"`;
+	            return result;
+	        }
+	        return result;
+	    }
+	    /**
+	     * Same as {@link PackageName.tryParse}, except this throws an exception if the input
+	     * cannot be parsed.
+	     * @remarks
+	     * The packageName must not be an empty string.
+	     */
+	    static parse(packageName) {
+	        const result = PackageName.tryParse(packageName);
+	        if (result.error) {
+	            throw new Error(result.error);
+	        }
+	        return result;
+	    }
+	    /**
+	     * {@inheritDoc IParsedPackageName.scope}
+	     */
+	    static getScope(packageName) {
+	        return PackageName.parse(packageName).scope;
+	    }
+	    /**
+	     * {@inheritDoc IParsedPackageName.unscopedName}
+	     */
+	    static getUnscopedName(packageName) {
+	        return PackageName.parse(packageName).unscopedName;
+	    }
+	    /**
+	     * Returns true if the specified package name is valid, or false otherwise.
+	     * @remarks
+	     * This function will not throw an exception.
+	     */
+	    static isValidName(packageName) {
+	        const result = PackageName.tryParse(packageName);
+	        return !result.error;
+	    }
+	    /**
+	     * Throws an exception if the specified name is not a valid package name.
+	     * The packageName must not be an empty string.
+	     */
+	    static validate(packageName) {
+	        PackageName.parse(packageName);
+	    }
+	    /**
+	     * Combines an optional package scope with an unscoped root name.
+	     * @param scope - Must be either an empty string, or a scope name such as "\@example"
+	     * @param unscopedName - Must be a nonempty package name that does not contain a scope
+	     * @returns A full package name such as "\@example/some-library".
+	     */
+	    static combineParts(scope, unscopedName) {
+	        if (scope !== '') {
+	            if (scope[0] !== '@') {
+	                throw new Error('The scope must start with an "@" character');
+	            }
+	        }
+	        if (scope.indexOf('/') >= 0) {
+	            throw new Error('The scope must not contain a "/" character');
+	        }
+	        if (unscopedName[0] === '@') {
+	            throw new Error('The unscopedName cannot start with an "@" character');
+	        }
+	        if (unscopedName.indexOf('/') >= 0) {
+	            throw new Error('The unscopedName must not contain a "/" character');
+	        }
+	        let result;
+	        if (scope === '') {
+	            result = unscopedName;
+	        }
+	        else {
+	            result = scope + '/' + unscopedName;
+	        }
+	        // Make sure the result is a valid package name
+	        PackageName.validate(result);
+	        return result;
+	    }
+	}
+	// encodeURIComponent() escapes all characters except:  A-Z a-z 0-9 - _ . ! ~ * ' ( )
+	// However, these are disallowed because they are shell characters:       ! ~ * ' ( )
+	PackageName._invalidNameCharactersRegExp = /[^A-Za-z0-9\-_\.]/;
+
+	// Copied from https://github.com/microsoft/rushstack/blob/23864e8f6213c872b88a7af8396e617c22cd9956/libraries/node-core-library/src/InternalError.ts without modification
+	// Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.
+	// See LICENSE in the project root for license information.
+	/**
+	 * An `Error` subclass that should be thrown to report an unexpected state that may indicate a software defect.
+	 * An application may handle this error by instructing the end user to report an issue to the application maintainers.
+	 *
+	 * @remarks
+	 * Do not use this class unless you intend to solicit bug reports from end users.
+	 *
+	 * @public
+	 */
+	class InternalError extends Error {
+	    /**
+	     * Constructs a new instance of the {@link InternalError} class.
+	     *
+	     * @param message - A message describing the error.  This will be assigned to
+	     * {@link InternalError.unformattedMessage}.  The `Error.message` field will have additional boilerplate
+	     * explaining that the user has encountered a software defect.
+	     */
+	    constructor(message) {
+	        super(InternalError._formatMessage(message));
+	        // Manually set the prototype, as we can no longer extend built-in classes like Error, Array, Map, etc.
+	        // https://github.com/microsoft/TypeScript-wiki/blob/master/Breaking-Changes.md#extending-built-ins-like-error-array-and-map-may-no-longer-work
+	        //
+	        // Note: the prototype must also be set on any classes which extend this one
+	        this.__proto__ = InternalError.prototype; // eslint-disable-line @typescript-eslint/no-explicit-any
+	        this.unformattedMessage = message;
+	        if (InternalError.breakInDebugger) {
+	            // eslint-disable-next-line no-debugger
+	            debugger;
+	        }
+	    }
+	    static _formatMessage(unformattedMessage) {
+	        return `Internal Error: ${unformattedMessage}\n\nYou have encountered a software defect. Please consider`
+	            + ` reporting the issue to the maintainers of this application.`;
+	    }
+	    /** @override */
+	    toString() {
+	        return this.message; // Avoid adding the "Error:" prefix
+	    }
+	}
+	/**
+	 * If true, a JavScript `debugger;` statement will be invoked whenever the `InternalError` constructor is called.
+	 *
+	 * @remarks
+	 * Generally applications should not be catching and ignoring an `InternalError`.  Instead, the error should
+	 * be reported and typically the application will terminate.  Thus, if `InternalError` is constructed, it's
+	 * almost always something we want to examine in a debugger.
+	 */
+	InternalError.breakInDebugger = true;
+
+	// Copied from https://github.com/microsoft/rushstack/blob/23864e8f6213c872b88a7af8396e617c22cd9956/libraries/node-core-library/src/Text.ts **with** modification
+	/**
+	 * Operations for working with strings that contain text.
+	 *
+	 * @remarks
+	 * The utilities provided by this class are intended to be simple, small, and very
+	 * broadly applicable.
+	 *
+	 * @public
+	 */
+	class Text {
+	    /**
+	     * Returns the same thing as targetString.replace(searchValue, replaceValue), except that
+	     * all matches are replaced, rather than just the first match.
+	     * @param input         - The string to be modified
+	     * @param searchValue   - The value to search for
+	     * @param replaceValue  - The replacement text
+	     */
+	    static replaceAll(input, searchValue, replaceValue) {
+	        return input.split(searchValue).join(replaceValue);
+	    }
+	    /**
+	     * Converts all newlines in the provided string to use Windows-style CRLF end of line characters.
+	     */
+	    static convertToCrLf(input) {
+	        return input.replace(Text._newLineRegEx, '\r\n');
+	    }
+	    /**
+	     * Converts all newlines in the provided string to use POSIX-style LF end of line characters.
+	     *
+	     * POSIX is a registered trademark of the Institute of Electrical and Electronic Engineers, Inc.
+	     */
+	    static convertToLf(input) {
+	        return input.replace(Text._newLineRegEx, '\n');
+	    }
+	    /**
+	     * Converts all newlines in the provided string to use the specified newline type.
+	     */
+	    static convertTo(input, newlineKind) {
+	        const newline = newlineKind;
+	        return input.replace(Text._newLineRegEx, newline);
+	    }
+	    /**
+	     * Append characters to the end of a string to ensure the result has a minimum length.
+	     * @remarks
+	     * If the string length already exceeds the minimum length, then the string is unchanged.
+	     * The string is not truncated.
+	     */
+	    static padEnd(s, minimumLength, paddingCharacter = ' ') {
+	        if (paddingCharacter.length !== 1) {
+	            throw new Error('The paddingCharacter parameter must be a single character.');
+	        }
+	        if (s.length < minimumLength) {
+	            const paddingArray = new Array(minimumLength - s.length);
+	            paddingArray.unshift(s);
+	            return paddingArray.join(paddingCharacter);
+	        }
+	        else {
+	            return s;
+	        }
+	    }
+	    /**
+	     * Append characters to the start of a string to ensure the result has a minimum length.
+	     * @remarks
+	     * If the string length already exceeds the minimum length, then the string is unchanged.
+	     * The string is not truncated.
+	     */
+	    static padStart(s, minimumLength, paddingCharacter = ' ') {
+	        if (paddingCharacter.length !== 1) {
+	            throw new Error('The paddingCharacter parameter must be a single character.');
+	        }
+	        if (s.length < minimumLength) {
+	            const paddingArray = new Array(minimumLength - s.length);
+	            paddingArray.push(s);
+	            return paddingArray.join(paddingCharacter);
+	        }
+	        else {
+	            return s;
+	        }
+	    }
+	    /**
+	     * If the string is longer than maximumLength characters, truncate it to that length
+	     * using "..." to indicate the truncation.
+	     *
+	     * @remarks
+	     * For example truncateWithEllipsis('1234578', 5) would produce '12...'.
+	     */
+	    static truncateWithEllipsis(s, maximumLength) {
+	        if (maximumLength < 0) {
+	            throw new Error('The maximumLength cannot be a negative number');
+	        }
+	        if (s.length <= maximumLength) {
+	            return s;
+	        }
+	        if (s.length <= 3) {
+	            return s.substring(0, maximumLength);
+	        }
+	        return s.substring(0, maximumLength - 3) + '...';
+	    }
+	    /**
+	     * Returns the input string with a trailing `\n` character appended, if not already present.
+	     */
+	    static ensureTrailingNewline(s, newlineKind = "\n" /* Lf */) {
+	        // Is there already a newline?
+	        if (Text._newLineAtEndRegEx.test(s)) {
+	            return s; // yes, no change
+	        }
+	        return s + newlineKind; // no, add it
+	    }
+	}
+	Text._newLineRegEx = /\r\n|\n\r|\r|\n/g;
+	Text._newLineAtEndRegEx = /(\r\n|\n\r|\r|\n)$/;
+
+	// Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.
+	// PRIVATE - Allows ApiItemContainerMixin to assign the parent.
+	//
+	const apiItem_onParentChanged = Symbol('ApiItem._onAddToContainer');
+	/**
+	 * The abstract base class for all members of an `ApiModel` object.
+	 *
+	 * @remarks
+	 * This is part of the {@link ApiModel} hierarchy of classes, which are serializable representations of
+	 * API declarations.
+	 * @public
+	 */
+	class ApiItem {
+	    constructor(options) {
+	        // ("options" is not used here, but part of the inheritance pattern)
+	    }
+	    static deserialize(jsonObject, context) {
+	        return Deserializer.deserialize(context, jsonObject);
+	    }
+	    /** @virtual */
+	    static onDeserializeInto(options, context, jsonObject) {
+	        // (implemented by subclasses)
+	    }
+	    /** @virtual */
+	    serializeInto(jsonObject) {
+	        jsonObject.kind = this.kind;
+	        jsonObject.canonicalReference = this.canonicalReference.toString();
+	    }
+	    /**
+	     * Identifies the subclass of the `ApiItem` base class.
+	     * @virtual
+	     */
+	    get kind() {
+	        throw new Error('ApiItem.kind was not implemented by the child class');
+	    }
+	    /**
+	     * Warning: This API is used internally by API extractor but is not yet ready for general usage.
+	     *
+	     * @remarks
+	     *
+	     * Returns a `DeclarationReference` object using the experimental new declaration reference notation.
+	     *
+	     * @beta
+	     */
+	    get canonicalReference() {
+	        if (!this._canonicalReference) {
+	            try {
+	                this._canonicalReference = this.buildCanonicalReference();
+	            }
+	            catch (e) {
+	                const name = this.getScopedNameWithinPackage() || this.displayName;
+	                throw new InternalError(`Error building canonical reference for ${name}:\n`
+	                    + e.message);
+	            }
+	        }
+	        return this._canonicalReference;
+	    }
+	    /**
+	     * Returns a string key that can be used to efficiently retrieve an `ApiItem` from an `ApiItemContainerMixin`.
+	     * The key is unique within the container.  Its format is undocumented and may change at any time.
+	     *
+	     * @remarks
+	     * Use the `getContainerKey()` static member to construct the key.  Each subclass has a different implementation
+	     * of this function, according to the aspects that are important for identifying it.
+	     *
+	     * @virtual
+	     */
+	    get containerKey() {
+	        throw new InternalError('ApiItem.containerKey was not implemented by the child class');
+	    }
+	    /**
+	     * Returns a name for this object that can be used in diagnostic messages, for example.
+	     *
+	     * @remarks
+	     * For an object that inherits ApiNameMixin, this will return the declared name (e.g. the name of a TypeScript
+	     * function).  Otherwise, it will return a string such as "(call signature)" or "(model)".
+	     *
+	     * @virtual
+	     */
+	    get displayName() {
+	        switch (this.kind) {
+	            case "CallSignature" /* CallSignature */: return '(call)';
+	            case "Constructor" /* Constructor */: return '(constructor)';
+	            case "ConstructSignature" /* ConstructSignature */: return '(new)';
+	            case "IndexSignature" /* IndexSignature */: return '(indexer)';
+	            case "Model" /* Model */: return '(model)';
+	        }
+	        return '(???)'; // All other types should inherit ApiNameMixin which will override this property
+	    }
+	    /**
+	     * If this item was added to a ApiItemContainerMixin item, then this returns the container item.
+	     * If this is an Parameter that was added to a method or function, then this returns the function item.
+	     * Otherwise, it returns undefined.
+	     * @virtual
+	     */
+	    get parent() {
+	        return this._parent;
+	    }
+	    /**
+	     * This property supports a visitor pattern for walking the tree.
+	     * For items with ApiItemContainerMixin, it returns the contained items.
+	     * Otherwise it returns an empty array.
+	     * @virtual
+	     */
+	    get members() {
+	        return [];
+	    }
+	    /**
+	     * If this item has a name (i.e. extends `ApiNameMixin`), then return all items that have the same parent
+	     * and the same name.  Otherwise, return all items that have the same parent and the same `ApiItemKind`.
+	     *
+	     * @remarks
+	     * Examples: For a function, this would return all overloads for the function.  For a constructor, this would
+	     * return all overloads for the constructor.  For a merged declaration (e.g. a `namespace` and `enum` with the
+	     * same name), this would return both declarations.  If this item does not have a parent, or if it is the only
+	     * item of its name/kind, then the result is an array containing only this item.
+	     */
+	    getMergedSiblings() {
+	        const parent = this._parent;
+	        if (parent && ApiItemContainerMixin.isBaseClassOf(parent)) {
+	            return parent._getMergedSiblingsForMember(this);
+	        }
+	        return [];
+	    }
+	    /**
+	     * Returns the chain of ancestors, starting from the root of the tree, and ending with the this item.
+	     */
+	    getHierarchy() {
+	        const hierarchy = [];
+	        for (let current = this; current !== undefined; current = current.parent) {
+	            hierarchy.push(current);
+	        }
+	        hierarchy.reverse();
+	        return hierarchy;
+	    }
+	    /**
+	     * This returns a scoped name such as `"Namespace1.Namespace2.MyClass.myMember()"`.  It does not include the
+	     * package name or entry point.
+	     *
+	     * @remarks
+	     * If called on an ApiEntrypoint, ApiPackage, or ApiModel item, the result is an empty string.
+	     */
+	    getScopedNameWithinPackage() {
+	        const reversedParts = [];
+	        for (let current = this; current !== undefined; current = current.parent) {
+	            if (current.kind === "Model" /* Model */
+	                || current.kind === "Package" /* Package */
+	                || current.kind === "EntryPoint" /* EntryPoint */) {
+	                break;
+	            }
+	            if (reversedParts.length !== 0) {
+	                reversedParts.push('.');
+	            }
+	            else {
+	                switch (current.kind) {
+	                    case "CallSignature" /* CallSignature */:
+	                    case "ConstructSignature" /* ConstructSignature */:
+	                    case "Constructor" /* Constructor */:
+	                    case "IndexSignature" /* IndexSignature */:
+	                        // These functional forms don't have a proper name, so we don't append the "()" suffix
+	                        break;
+	                    default:
+	                        if (ApiParameterListMixin.isBaseClassOf(current)) {
+	                            reversedParts.push('()');
+	                        }
+	                }
+	            }
+	            reversedParts.push(current.displayName);
+	        }
+	        return reversedParts.reverse().join('');
+	    }
+	    /**
+	     * If this item is an ApiPackage or has an ApiPackage as one of its parents, then that object is returned.
+	     * Otherwise undefined is returned.
+	     */
+	    getAssociatedPackage() {
+	        for (let current = this; current !== undefined; current = current.parent) {
+	            if (current.kind === "Package" /* Package */) {
+	                return current;
+	            }
+	        }
+	        return undefined;
+	    }
+	    /** @virtual */
+	    getSortKey() {
+	        return this.containerKey;
+	    }
+	    /**
+	     * PRIVATE
+	     *
+	     * @privateRemarks
+	     * Allows ApiItemContainerMixin to assign the parent when the item is added to a container.
+	     *
+	     * @internal
+	     */
+	    [apiItem_onParentChanged](parent) {
+	        this._parent = parent;
+	        this._canonicalReference = undefined;
+	    }
+	    /**
+	     * Builds the cached object used by the `canonicalReference` property.
+	     * @virtual
+	     */
+	    buildCanonicalReference() {
+	        throw new InternalError('ApiItem.canonicalReference was not implemented by the child class');
+	    }
+	}
+
+	// Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.
+	/**
+	 * An abstract base class for API declarations that can have an associated TSDoc comment.
+	 *
+	 * @remarks
+	 *
+	 * This is part of the {@link ApiModel} hierarchy of classes, which are serializable representations of
+	 * API declarations.
+	 *
+	 * @public
+	 */
+	class ApiDocumentedItem extends ApiItem {
+	    constructor(options) {
+	        super(options);
+	        this._tsdocComment = options.docComment;
+	    }
+	    /** @override */
+	    static onDeserializeInto(options, context, jsonObject) {
+	        super.onDeserializeInto(options, context, jsonObject);
+	        const documentedJson = jsonObject;
+	        if (documentedJson.docComment) {
+	            const tsdocParser = new lib_19(AedocDefinitions.tsdocConfiguration);
+	            // NOTE: For now, we ignore TSDoc errors found in a serialized .api.json file.
+	            // Normally these errors would have already been reported by API Extractor during analysis.
+	            // However, they could also arise if the JSON file was edited manually, or if the file was saved
+	            // using a different release of the software that used an incompatible syntax.
+	            const parserContext = tsdocParser.parseString(documentedJson.docComment);
+	            options.docComment = parserContext.docComment;
+	        }
+	    }
+	    get tsdocComment() {
+	        return this._tsdocComment;
+	    }
+	    /** @override */
+	    serializeInto(jsonObject) {
+	        super.serializeInto(jsonObject);
+	        if (this.tsdocComment !== undefined) {
+	            jsonObject.docComment = this.tsdocComment.emitAsTsdoc();
+	        }
+	        else {
+	            jsonObject.docComment = '';
+	        }
+	    }
+	}
+
 	var DeclarationReference_1 = createCommonjsModule(function (module, exports) {
 	/* eslint-disable max-lines */
 	/* eslint-disable @typescript-eslint/array-type */
@@ -9483,328 +10059,133 @@
 	var DeclarationReference_10 = DeclarationReference_1.ComponentNavigation;
 	var DeclarationReference_11 = DeclarationReference_1.SymbolReference;
 
-	// Copied from https://github.com/microsoft/rushstack/blob/23864e8f6213c872b88a7af8396e617c22cd9956/libraries/node-core-library/src/PackageName.ts without modification
-	/**
-	 * Various functions for working with package names that may include scopes.
-	 *
-	 * @public
-	 */
-	class PackageName {
-	    /**
-	     * This attempts to parse a package name that may include a scope component.
-	     * The packageName must not be an empty string.
-	     * @remarks
-	     * This function will not throw an exception.
-	     *
-	     * @returns an {@link IParsedPackageNameOrError} structure whose `error` property will be
-	     * nonempty if the string could not be parsed.
-	     */
-	    static tryParse(packageName) {
-	        const result = {
-	            scope: '',
-	            unscopedName: '',
-	            error: ''
-	        };
-	        let input = packageName;
-	        if (input === null || input === undefined) {
-	            result.error = 'The package name must not be null or undefined';
-	            return result;
-	        }
-	        // Rule from npmjs.com:
-	        // "The name must be less than or equal to 214 characters. This includes the scope for scoped packages."
-	        if (packageName.length > 214) {
-	            // Don't attempt to parse a ridiculously long input
-	            result.error = 'The package name cannot be longer than 214 characters';
-	            return result;
-	        }
-	        if (input[0] === '@') {
-	            const indexOfScopeSlash = input.indexOf('/');
-	            if (indexOfScopeSlash <= 0) {
-	                result.scope = input;
-	                result.error = `Error parsing "${packageName}": The scope must be followed by a slash`;
-	                return result;
-	            }
-	            // Extract the scope substring
-	            result.scope = input.substr(0, indexOfScopeSlash);
-	            input = input.substr(indexOfScopeSlash + 1);
-	        }
-	        result.unscopedName = input;
-	        if (result.scope === '@') {
-	            result.error = `Error parsing "${packageName}": The scope name cannot be empty`;
-	            return result;
-	        }
-	        if (result.unscopedName === '') {
-	            result.error = 'The package name must not be empty';
-	            return result;
-	        }
-	        // Rule from npmjs.com:
-	        // "The name can't start with a dot or an underscore."
-	        if (result.unscopedName[0] === '.' || result.unscopedName[0] === '_') {
-	            result.error = `The package name "${packageName}" starts with an invalid character`;
-	            return result;
-	        }
-	        // Convert "@scope/unscoped-name" --> "scopeunscoped-name"
-	        const nameWithoutScopeSymbols = (result.scope ? result.scope.slice(1, -1) : '')
-	            + result.unscopedName;
-	        // "New packages must not have uppercase letters in the name."
-	        // This can't be enforced because "old" packages are still actively maintained.
-	        // Example: https://www.npmjs.com/package/Base64
-	        // However it's pretty reasonable to require the scope to be lower case
-	        if (result.scope !== result.scope.toLowerCase()) {
-	            result.error = `The package scope "${result.scope}" must not contain upper case characters`;
-	            return result;
-	        }
-	        // "The name ends up being part of a URL, an argument on the command line, and a folder name.
-	        // Therefore, the name can't contain any non-URL-safe characters"
-	        const match = nameWithoutScopeSymbols.match(PackageName._invalidNameCharactersRegExp);
-	        if (match) {
-	            result.error = `The package name "${packageName}" contains an invalid character: "${match[0]}"`;
-	            return result;
-	        }
-	        return result;
-	    }
-	    /**
-	     * Same as {@link PackageName.tryParse}, except this throws an exception if the input
-	     * cannot be parsed.
-	     * @remarks
-	     * The packageName must not be an empty string.
-	     */
-	    static parse(packageName) {
-	        const result = PackageName.tryParse(packageName);
-	        if (result.error) {
-	            throw new Error(result.error);
-	        }
-	        return result;
-	    }
-	    /**
-	     * {@inheritDoc IParsedPackageName.scope}
-	     */
-	    static getScope(packageName) {
-	        return PackageName.parse(packageName).scope;
-	    }
-	    /**
-	     * {@inheritDoc IParsedPackageName.unscopedName}
-	     */
-	    static getUnscopedName(packageName) {
-	        return PackageName.parse(packageName).unscopedName;
-	    }
-	    /**
-	     * Returns true if the specified package name is valid, or false otherwise.
-	     * @remarks
-	     * This function will not throw an exception.
-	     */
-	    static isValidName(packageName) {
-	        const result = PackageName.tryParse(packageName);
-	        return !result.error;
-	    }
-	    /**
-	     * Throws an exception if the specified name is not a valid package name.
-	     * The packageName must not be an empty string.
-	     */
-	    static validate(packageName) {
-	        PackageName.parse(packageName);
-	    }
-	    /**
-	     * Combines an optional package scope with an unscoped root name.
-	     * @param scope - Must be either an empty string, or a scope name such as "\@example"
-	     * @param unscopedName - Must be a nonempty package name that does not contain a scope
-	     * @returns A full package name such as "\@example/some-library".
-	     */
-	    static combineParts(scope, unscopedName) {
-	        if (scope !== '') {
-	            if (scope[0] !== '@') {
-	                throw new Error('The scope must start with an "@" character');
-	            }
-	        }
-	        if (scope.indexOf('/') >= 0) {
-	            throw new Error('The scope must not contain a "/" character');
-	        }
-	        if (unscopedName[0] === '@') {
-	            throw new Error('The unscopedName cannot start with an "@" character');
-	        }
-	        if (unscopedName.indexOf('/') >= 0) {
-	            throw new Error('The unscopedName must not contain a "/" character');
-	        }
-	        let result;
-	        if (scope === '') {
-	            result = unscopedName;
-	        }
-	        else {
-	            result = scope + '/' + unscopedName;
-	        }
-	        // Make sure the result is a valid package name
-	        PackageName.validate(result);
-	        return result;
-	    }
-	}
-	// encodeURIComponent() escapes all characters except:  A-Z a-z 0-9 - _ . ! ~ * ' ( )
-	// However, these are disallowed because they are shell characters:       ! ~ * ' ( )
-	PackageName._invalidNameCharactersRegExp = /[^A-Za-z0-9\-_\.]/;
-
-	// Copied from https://github.com/microsoft/rushstack/blob/23864e8f6213c872b88a7af8396e617c22cd9956/libraries/node-core-library/src/InternalError.ts without modification
 	// Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.
-	// See LICENSE in the project root for license information.
 	/**
-	 * An `Error` subclass that should be thrown to report an unexpected state that may indicate a software defect.
-	 * An application may handle this error by instructing the end user to report an issue to the application maintainers.
+	 * The base class for API items that have an associated source code excerpt containing a TypeScript declaration.
 	 *
 	 * @remarks
-	 * Do not use this class unless you intend to solicit bug reports from end users.
+	 *
+	 * This is part of the {@link ApiModel} hierarchy of classes, which are serializable representations of
+	 * API declarations.
+	 *
+	 * Most `ApiItem` subclasses have declarations and thus extend `ApiDeclaredItem`.  Counterexamples include
+	 * `ApiModel` and `ApiPackage`, which do not have any corresponding TypeScript source code.
 	 *
 	 * @public
 	 */
-	class InternalError extends Error {
-	    /**
-	     * Constructs a new instance of the {@link InternalError} class.
-	     *
-	     * @param message - A message describing the error.  This will be assigned to
-	     * {@link InternalError.unformattedMessage}.  The `Error.message` field will have additional boilerplate
-	     * explaining that the user has encountered a software defect.
-	     */
-	    constructor(message) {
-	        super(InternalError._formatMessage(message));
-	        // Manually set the prototype, as we can no longer extend built-in classes like Error, Array, Map, etc.
-	        // https://github.com/microsoft/TypeScript-wiki/blob/master/Breaking-Changes.md#extending-built-ins-like-error-array-and-map-may-no-longer-work
-	        //
-	        // Note: the prototype must also be set on any classes which extend this one
-	        this.__proto__ = InternalError.prototype; // eslint-disable-line @typescript-eslint/no-explicit-any
-	        this.unformattedMessage = message;
-	        if (InternalError.breakInDebugger) {
-	            // eslint-disable-next-line no-debugger
-	            debugger;
-	        }
-	    }
-	    static _formatMessage(unformattedMessage) {
-	        return `Internal Error: ${unformattedMessage}\n\nYou have encountered a software defect. Please consider`
-	            + ` reporting the issue to the maintainers of this application.`;
+	// eslint-disable-next-line @typescript-eslint/interface-name-prefix
+	class ApiDeclaredItem extends ApiDocumentedItem {
+	    constructor(options) {
+	        super(options);
+	        this._excerptTokens = options.excerptTokens.map(token => {
+	            const canonicalReference = token.canonicalReference === undefined ? undefined :
+	                DeclarationReference_2.parse(token.canonicalReference);
+	            return new ExcerptToken(token.kind, token.text, canonicalReference);
+	        });
+	        this._excerpt = new Excerpt(this.excerptTokens, { startIndex: 0, endIndex: this.excerptTokens.length });
 	    }
 	    /** @override */
-	    toString() {
-	        return this.message; // Avoid adding the "Error:" prefix
+	    static onDeserializeInto(options, context, jsonObject) {
+	        super.onDeserializeInto(options, context, jsonObject);
+	        options.excerptTokens = jsonObject.excerptTokens;
+	    }
+	    /**
+	     * The source code excerpt where the API item is declared.
+	     */
+	    get excerpt() {
+	        return this._excerpt;
+	    }
+	    /**
+	     * The individual source code tokens that comprise the main excerpt.
+	     */
+	    get excerptTokens() {
+	        return this._excerptTokens;
+	    }
+	    /**
+	     * If the API item has certain important modifier tags such as `@sealed`, `@virtual`, or `@override`,
+	     * this prepends them as a doc comment above the excerpt.
+	     */
+	    getExcerptWithModifiers() {
+	        const excerpt = this.excerpt.text;
+	        const modifierTags = [];
+	        if (excerpt.length > 0) {
+	            if (this instanceof ApiDocumentedItem) {
+	                if (this.tsdocComment) {
+	                    if (this.tsdocComment.modifierTagSet.isSealed()) {
+	                        modifierTags.push('@sealed');
+	                    }
+	                    if (this.tsdocComment.modifierTagSet.isVirtual()) {
+	                        modifierTags.push('@virtual');
+	                    }
+	                    if (this.tsdocComment.modifierTagSet.isOverride()) {
+	                        modifierTags.push('@override');
+	                    }
+	                }
+	                if (modifierTags.length > 0) {
+	                    return '/** ' + modifierTags.join(' ') + ' */\n'
+	                        + excerpt;
+	                }
+	            }
+	        }
+	        return excerpt;
+	    }
+	    /** @override */
+	    serializeInto(jsonObject) {
+	        super.serializeInto(jsonObject);
+	        jsonObject.excerptTokens = this.excerptTokens.map(x => {
+	            const excerptToken = { kind: x.kind, text: x.text };
+	            if (x.canonicalReference !== undefined) {
+	                excerptToken.canonicalReference = x.canonicalReference.toString();
+	            }
+	            return excerptToken;
+	        });
+	    }
+	    /**
+	     * Constructs a new {@link Excerpt} corresponding to the provided token range.
+	     */
+	    buildExcerpt(tokenRange) {
+	        return new Excerpt(this.excerptTokens, tokenRange);
 	    }
 	}
-	/**
-	 * If true, a JavScript `debugger;` statement will be invoked whenever the `InternalError` constructor is called.
-	 *
-	 * @remarks
-	 * Generally applications should not be catching and ignoring an `InternalError`.  Instead, the error should
-	 * be reported and typically the application will terminate.  Thus, if `InternalError` is constructed, it's
-	 * almost always something we want to examine in a debugger.
-	 */
-	InternalError.breakInDebugger = true;
 
-	// Copied from https://github.com/microsoft/rushstack/blob/23864e8f6213c872b88a7af8396e617c22cd9956/libraries/node-core-library/src/Text.ts **with** modification
+	// Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.
 	/**
-	 * Operations for working with strings that contain text.
-	 *
-	 * @remarks
-	 * The utilities provided by this class are intended to be simple, small, and very
-	 * broadly applicable.
+	 * The abstract base class for {@link ApiProperty} and {@link ApiPropertySignature}.
 	 *
 	 * @public
 	 */
-	class Text {
-	    /**
-	     * Returns the same thing as targetString.replace(searchValue, replaceValue), except that
-	     * all matches are replaced, rather than just the first match.
-	     * @param input         - The string to be modified
-	     * @param searchValue   - The value to search for
-	     * @param replaceValue  - The replacement text
-	     */
-	    static replaceAll(input, searchValue, replaceValue) {
-	        return input.split(searchValue).join(replaceValue);
+	class ApiPropertyItem extends ApiNameMixin(ApiReleaseTagMixin(ApiDeclaredItem)) {
+	    constructor(options) {
+	        super(options);
+	        this.propertyTypeExcerpt = this.buildExcerpt(options.propertyTypeTokenRange);
+	    }
+	    /** @override */
+	    static onDeserializeInto(options, context, jsonObject) {
+	        super.onDeserializeInto(options, context, jsonObject);
+	        options.propertyTypeTokenRange = jsonObject.propertyTypeTokenRange;
 	    }
 	    /**
-	     * Converts all newlines in the provided string to use Windows-style CRLF end of line characters.
-	     */
-	    static convertToCrLf(input) {
-	        return input.replace(Text._newLineRegEx, '\r\n');
-	    }
-	    /**
-	     * Converts all newlines in the provided string to use POSIX-style LF end of line characters.
-	     *
-	     * POSIX is a registered trademark of the Institute of Electrical and Electronic Engineers, Inc.
-	     */
-	    static convertToLf(input) {
-	        return input.replace(Text._newLineRegEx, '\n');
-	    }
-	    /**
-	     * Converts all newlines in the provided string to use the specified newline type.
-	     */
-	    static convertTo(input, newlineKind) {
-	        const newline = newlineKind;
-	        return input.replace(Text._newLineRegEx, newline);
-	    }
-	    /**
-	     * Append characters to the end of a string to ensure the result has a minimum length.
-	     * @remarks
-	     * If the string length already exceeds the minimum length, then the string is unchanged.
-	     * The string is not truncated.
-	     */
-	    static padEnd(s, minimumLength, paddingCharacter = ' ') {
-	        if (paddingCharacter.length !== 1) {
-	            throw new Error('The paddingCharacter parameter must be a single character.');
-	        }
-	        if (s.length < minimumLength) {
-	            const paddingArray = new Array(minimumLength - s.length);
-	            paddingArray.unshift(s);
-	            return paddingArray.join(paddingCharacter);
-	        }
-	        else {
-	            return s;
-	        }
-	    }
-	    /**
-	     * Append characters to the start of a string to ensure the result has a minimum length.
-	     * @remarks
-	     * If the string length already exceeds the minimum length, then the string is unchanged.
-	     * The string is not truncated.
-	     */
-	    static padStart(s, minimumLength, paddingCharacter = ' ') {
-	        if (paddingCharacter.length !== 1) {
-	            throw new Error('The paddingCharacter parameter must be a single character.');
-	        }
-	        if (s.length < minimumLength) {
-	            const paddingArray = new Array(minimumLength - s.length);
-	            paddingArray.push(s);
-	            return paddingArray.join(paddingCharacter);
-	        }
-	        else {
-	            return s;
-	        }
-	    }
-	    /**
-	     * If the string is longer than maximumLength characters, truncate it to that length
-	     * using "..." to indicate the truncation.
+	     * Returns true if this property should be documented as an event.
 	     *
 	     * @remarks
-	     * For example truncateWithEllipsis('1234578', 5) would produce '12...'.
+	     * The `@eventProperty` TSDoc modifier can be added to readonly properties to indicate that they return an
+	     * event object that event handlers can be attached to.  The event-handling API is implementation-defined, but
+	     * typically the return type would be a class with members such as `addHandler()` and `removeHandler()`.
+	     * The documentation should display such properties under an "Events" heading instead of the
+	     * usual "Properties" heading.
 	     */
-	    static truncateWithEllipsis(s, maximumLength) {
-	        if (maximumLength < 0) {
-	            throw new Error('The maximumLength cannot be a negative number');
+	    get isEventProperty() {
+	        if (this.tsdocComment) {
+	            return this.tsdocComment.modifierTagSet.isEventProperty();
 	        }
-	        if (s.length <= maximumLength) {
-	            return s;
-	        }
-	        if (s.length <= 3) {
-	            return s.substring(0, maximumLength);
-	        }
-	        return s.substring(0, maximumLength - 3) + '...';
+	        return false;
 	    }
-	    /**
-	     * Returns the input string with a trailing `\n` character appended, if not already present.
-	     */
-	    static ensureTrailingNewline(s, newlineKind = "\n" /* Lf */) {
-	        // Is there already a newline?
-	        if (Text._newLineAtEndRegEx.test(s)) {
-	            return s; // yes, no change
-	        }
-	        return s + newlineKind; // no, add it
+	    /** @override */
+	    serializeInto(jsonObject) {
+	        super.serializeInto(jsonObject);
+	        jsonObject.propertyTypeTokenRange = this.propertyTypeExcerpt.tokenRange;
 	    }
 	}
-	Text._newLineRegEx = /\r\n|\n\r|\r|\n/g;
-	Text._newLineAtEndRegEx = /(\r\n|\n\r|\r|\n)$/;
 
 	// Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.
 	/**
@@ -9924,6 +10305,133 @@
 	    }
 	    ApiParameterListMixin.isBaseClassOf = isBaseClassOf;
 	})(ApiParameterListMixin || (ApiParameterListMixin = {}));
+
+	// Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.
+	/**
+	 * Represents a named type parameter for a generic declaration.
+	 *
+	 * @remarks
+	 *
+	 * `TypeParameter` represents a TypeScript declaration such as `T` in this example:
+	 *
+	 * ```ts
+	 * interface IIdentifier {
+	 *     getCode(): string;
+	 * }
+	 *
+	 * class BarCode implements IIdentifier {
+	 *     private _value: number;
+	 *     public getCode(): string { return this._value.toString(); }
+	 * }
+	 *
+	 * class Book<TIdentifier extends IIdentifier = BarCode> {
+	 *     public identifier: TIdentifier;
+	 * }
+	 * ```
+	 *
+	 * `TypeParameter` objects belong to the {@link (ApiTypeParameterListMixin:interface).typeParameters} collection.
+	 *
+	 * @public
+	 */
+	class TypeParameter {
+	    constructor(options) {
+	        this.name = options.name;
+	        this.constraintExcerpt = options.constraintExcerpt;
+	        this.defaultTypeExcerpt = options.defaultTypeExcerpt;
+	        this._parent = options.parent;
+	    }
+	    /**
+	     * Returns the `@typeParam` documentation for this parameter, if present.
+	     */
+	    get tsdocTypeParamBlock() {
+	        if (this._parent instanceof ApiDocumentedItem) {
+	            if (this._parent.tsdocComment) {
+	                return this._parent.tsdocComment.typeParams.tryGetBlockByName(this.name);
+	            }
+	        }
+	    }
+	}
+
+	// Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.
+	const _typeParameters = Symbol('ApiTypeParameterListMixin._typeParameters');
+	/**
+	 * Mixin function for {@link (ApiTypeParameterListMixin:interface)}.
+	 *
+	 * @param baseClass - The base class to be extended
+	 * @returns A child class that extends baseClass, adding the {@link (ApiTypeParameterListMixin:interface)}
+	 * functionality.
+	 *
+	 * @public
+	 */
+	function ApiTypeParameterListMixin(baseClass) {
+	    class MixedClass extends baseClass {
+	        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+	        constructor(...args) {
+	            super(...args);
+	            const options = args[0];
+	            this[_typeParameters] = [];
+	            if (this instanceof ApiDeclaredItem) {
+	                if (options.typeParameters) {
+	                    for (const typeParameterOptions of options.typeParameters) {
+	                        const typeParameter = new TypeParameter({
+	                            name: typeParameterOptions.typeParameterName,
+	                            constraintExcerpt: this.buildExcerpt(typeParameterOptions.constraintTokenRange),
+	                            defaultTypeExcerpt: this.buildExcerpt(typeParameterOptions.defaultTypeTokenRange),
+	                            parent: this
+	                        });
+	                        this[_typeParameters].push(typeParameter);
+	                    }
+	                }
+	            }
+	            else {
+	                throw new InternalError('ApiTypeParameterListMixin expects a base class that inherits from ApiDeclaredItem');
+	            }
+	        }
+	        /** @override */
+	        static onDeserializeInto(options, context, jsonObject) {
+	            baseClass.onDeserializeInto(options, context, jsonObject);
+	            options.typeParameters = jsonObject.typeParameters || [];
+	        }
+	        get typeParameters() {
+	            return this[_typeParameters];
+	        }
+	        /** @override */
+	        serializeInto(jsonObject) {
+	            super.serializeInto(jsonObject);
+	            const typeParameterObjects = [];
+	            for (const typeParameter of this.typeParameters) {
+	                typeParameterObjects.push({
+	                    typeParameterName: typeParameter.name,
+	                    constraintTokenRange: typeParameter.constraintExcerpt.tokenRange,
+	                    defaultTypeTokenRange: typeParameter.defaultTypeExcerpt.tokenRange
+	                });
+	            }
+	            if (typeParameterObjects.length > 0) {
+	                jsonObject.typeParameters = typeParameterObjects;
+	            }
+	        }
+	    }
+	    return MixedClass;
+	}
+	/**
+	 * Static members for {@link (ApiTypeParameterListMixin:interface)}.
+	 * @public
+	 */
+	(function (ApiTypeParameterListMixin) {
+	    /**
+	     * A type guard that tests whether the specified `ApiItem` subclass extends the `ApiParameterListMixin` mixin.
+	     *
+	     * @remarks
+	     *
+	     * The JavaScript `instanceof` operator cannot be used to test for mixin inheritance, because each invocation of
+	     * the mixin function produces a different subclass.  (This could be mitigated by `Symbol.hasInstance`, however
+	     * the TypeScript type system cannot invoke a runtime test.)
+	     */
+	    function isBaseClassOf(apiItem) {
+	        return apiItem.hasOwnProperty(_typeParameters);
+	    }
+	    ApiTypeParameterListMixin.isBaseClassOf = isBaseClassOf;
+	})(ApiTypeParameterListMixin || (ApiTypeParameterListMixin = {}));
 
 	// Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.
 	// See LICENSE in the project root for license information.s
@@ -11002,6 +11510,179 @@
 	})(ApiReleaseTagMixin || (ApiReleaseTagMixin = {}));
 
 	// Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.
+	const _returnTypeExcerpt = Symbol('ApiReturnTypeMixin._returnTypeExcerpt');
+	/**
+	 * Mixin function for {@link (ApiReturnTypeMixin:interface)}.
+	 *
+	 * @param baseClass - The base class to be extended
+	 * @returns A child class that extends baseClass, adding the {@link (ApiReturnTypeMixin:interface)} functionality.
+	 *
+	 * @public
+	 */
+	function ApiReturnTypeMixin(baseClass) {
+	    class MixedClass extends baseClass {
+	        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+	        constructor(...args) {
+	            super(...args);
+	            const options = args[0];
+	            if (this instanceof ApiDeclaredItem) {
+	                this[_returnTypeExcerpt] = this.buildExcerpt(options.returnTypeTokenRange);
+	            }
+	            else {
+	                throw new InternalError('ApiReturnTypeMixin expects a base class that inherits from ApiDeclaredItem');
+	            }
+	        }
+	        /** @override */
+	        static onDeserializeInto(options, context, jsonObject) {
+	            baseClass.onDeserializeInto(options, context, jsonObject);
+	            options.returnTypeTokenRange = jsonObject.returnTypeTokenRange;
+	        }
+	        get returnTypeExcerpt() {
+	            return this[_returnTypeExcerpt];
+	        }
+	        /** @override */
+	        serializeInto(jsonObject) {
+	            super.serializeInto(jsonObject);
+	            jsonObject.returnTypeTokenRange = this.returnTypeExcerpt.tokenRange;
+	        }
+	    }
+	    return MixedClass;
+	}
+	/**
+	 * Static members for {@link (ApiReturnTypeMixin:interface)}.
+	 * @public
+	 */
+	(function (ApiReturnTypeMixin) {
+	    /**
+	     * A type guard that tests whether the specified `ApiItem` subclass extends the `ApiReturnTypeMixin` mixin.
+	     *
+	     * @remarks
+	     *
+	     * The JavaScript `instanceof` operator cannot be used to test for mixin inheritance, because each invocation of
+	     * the mixin function produces a different subclass.  (This could be mitigated by `Symbol.hasInstance`, however
+	     * the TypeScript type system cannot invoke a runtime test.)
+	     */
+	    function isBaseClassOf(apiItem) {
+	        return apiItem.hasOwnProperty(_returnTypeExcerpt);
+	    }
+	    ApiReturnTypeMixin.isBaseClassOf = isBaseClassOf;
+	})(ApiReturnTypeMixin || (ApiReturnTypeMixin = {}));
+
+	// Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.
+	// See LICENSE in the project root for license information.s
+	const _isStatic = Symbol('ApiStaticMixin._isStatic');
+	/**
+	 * Mixin function for {@link (ApiStaticMixin:interface)}.
+	 *
+	 * @param baseClass - The base class to be extended
+	 * @returns A child class that extends baseClass, adding the {@link (ApiStaticMixin:interface)} functionality.
+	 *
+	 * @public
+	 */
+	function ApiStaticMixin(baseClass) {
+	    class MixedClass extends baseClass {
+	        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+	        constructor(...args) {
+	            super(...args);
+	            const options = args[0];
+	            this[_isStatic] = options.isStatic;
+	        }
+	        /** @override */
+	        static onDeserializeInto(options, context, jsonObject) {
+	            baseClass.onDeserializeInto(options, context, jsonObject);
+	            options.isStatic = jsonObject.isStatic;
+	        }
+	        get isStatic() {
+	            return this[_isStatic];
+	        }
+	        /** @override */
+	        serializeInto(jsonObject) {
+	            super.serializeInto(jsonObject);
+	            jsonObject.isStatic = this.isStatic;
+	        }
+	    }
+	    return MixedClass;
+	}
+	/**
+	 * Static members for {@link (ApiStaticMixin:interface)}.
+	 * @public
+	 */
+	(function (ApiStaticMixin) {
+	    /**
+	     * A type guard that tests whether the specified `ApiItem` subclass extends the `ApiStaticMixin` mixin.
+	     *
+	     * @remarks
+	     *
+	     * The JavaScript `instanceof` operator cannot be used to test for mixin inheritance, because each invocation of
+	     * the mixin function produces a different subclass.  (This could be mitigated by `Symbol.hasInstance`, however
+	     * the TypeScript type system cannot invoke a runtime test.)
+	     */
+	    function isBaseClassOf(apiItem) {
+	        return apiItem.hasOwnProperty(_isStatic);
+	    }
+	    ApiStaticMixin.isBaseClassOf = isBaseClassOf;
+	})(ApiStaticMixin || (ApiStaticMixin = {}));
+
+	// Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.
+	/** @public */
+	class ExcerptToken {
+	    constructor(kind, text, canonicalReference) {
+	        this._kind = kind;
+	        // Standardize the newlines across operating systems. Even though this may deviate from the actual
+	        // input source file that was parsed, it's useful because the newline gets serialized inside
+	        // a string literal in .api.json, which cannot be automatically normalized by Git.
+	        this._text = Text.convertToLf(text);
+	        this._canonicalReference = canonicalReference;
+	    }
+	    get kind() {
+	        return this._kind;
+	    }
+	    get text() {
+	        return this._text;
+	    }
+	    get canonicalReference() {
+	        return this._canonicalReference;
+	    }
+	}
+	/**
+	 * This class is used by {@link ApiDeclaredItem} to represent a source code excerpt containing
+	 * a TypeScript declaration.
+	 *
+	 * @remarks
+	 *
+	 * The main excerpt is parsed into an array of tokens, and the main excerpt's token range will span all of these
+	 * tokens.  The declaration may also have have "captured" excerpts, which are other subranges of tokens.
+	 * For example, if the main excerpt is a function declaration, it will also have a captured excerpt corresponding
+	 * to the return type of the function.
+	 *
+	 * An excerpt may be empty (i.e. a token range containing zero tokens).  For example, if a function's return value
+	 * is not explicitly declared, then the returnTypeExcerpt will be empty.  By contrast, a class constructor cannot
+	 * have a return value, so ApiConstructor has no returnTypeExcerpt property at all.
+	 *
+	 * @public
+	 */
+	class Excerpt {
+	    constructor(tokens, tokenRange) {
+	        this.tokens = tokens;
+	        this.tokenRange = tokenRange;
+	        if (this.tokenRange.startIndex < 0 || this.tokenRange.endIndex > this.tokens.length
+	            || this.tokenRange.startIndex > this.tokenRange.endIndex) {
+	            throw new Error('Invalid token range');
+	        }
+	    }
+	    get text() {
+	        if (this._text === undefined) {
+	            this._text = this.tokens.slice(this.tokenRange.startIndex, this.tokenRange.endIndex)
+	                .map(x => x.text).join('');
+	        }
+	        return this._text;
+	    }
+	    get isEmpty() {
+	        return this.tokenRange.startIndex === this.tokenRange.endIndex;
+	    }
+	}
+
+	// Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.
 	// See LICENSE in the project root for license information.
 	/**
 	 * Represents a type referenced via an "extends" or "implements" heritage clause for a TypeScript class.
@@ -11023,133 +11704,6 @@
 	        this.excerpt = excerpt;
 	    }
 	}
-
-	// Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.
-	/**
-	 * Represents a named type parameter for a generic declaration.
-	 *
-	 * @remarks
-	 *
-	 * `TypeParameter` represents a TypeScript declaration such as `T` in this example:
-	 *
-	 * ```ts
-	 * interface IIdentifier {
-	 *     getCode(): string;
-	 * }
-	 *
-	 * class BarCode implements IIdentifier {
-	 *     private _value: number;
-	 *     public getCode(): string { return this._value.toString(); }
-	 * }
-	 *
-	 * class Book<TIdentifier extends IIdentifier = BarCode> {
-	 *     public identifier: TIdentifier;
-	 * }
-	 * ```
-	 *
-	 * `TypeParameter` objects belong to the {@link (ApiTypeParameterListMixin:interface).typeParameters} collection.
-	 *
-	 * @public
-	 */
-	class TypeParameter {
-	    constructor(options) {
-	        this.name = options.name;
-	        this.constraintExcerpt = options.constraintExcerpt;
-	        this.defaultTypeExcerpt = options.defaultTypeExcerpt;
-	        this._parent = options.parent;
-	    }
-	    /**
-	     * Returns the `@typeParam` documentation for this parameter, if present.
-	     */
-	    get tsdocTypeParamBlock() {
-	        if (this._parent instanceof ApiDocumentedItem) {
-	            if (this._parent.tsdocComment) {
-	                return this._parent.tsdocComment.typeParams.tryGetBlockByName(this.name);
-	            }
-	        }
-	    }
-	}
-
-	// Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.
-	const _typeParameters = Symbol('ApiTypeParameterListMixin._typeParameters');
-	/**
-	 * Mixin function for {@link (ApiTypeParameterListMixin:interface)}.
-	 *
-	 * @param baseClass - The base class to be extended
-	 * @returns A child class that extends baseClass, adding the {@link (ApiTypeParameterListMixin:interface)}
-	 * functionality.
-	 *
-	 * @public
-	 */
-	function ApiTypeParameterListMixin(baseClass) {
-	    class MixedClass extends baseClass {
-	        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-	        constructor(...args) {
-	            super(...args);
-	            const options = args[0];
-	            this[_typeParameters] = [];
-	            if (this instanceof ApiDeclaredItem) {
-	                if (options.typeParameters) {
-	                    for (const typeParameterOptions of options.typeParameters) {
-	                        const typeParameter = new TypeParameter({
-	                            name: typeParameterOptions.typeParameterName,
-	                            constraintExcerpt: this.buildExcerpt(typeParameterOptions.constraintTokenRange),
-	                            defaultTypeExcerpt: this.buildExcerpt(typeParameterOptions.defaultTypeTokenRange),
-	                            parent: this
-	                        });
-	                        this[_typeParameters].push(typeParameter);
-	                    }
-	                }
-	            }
-	            else {
-	                throw new InternalError('ApiTypeParameterListMixin expects a base class that inherits from ApiDeclaredItem');
-	            }
-	        }
-	        /** @override */
-	        static onDeserializeInto(options, context, jsonObject) {
-	            baseClass.onDeserializeInto(options, context, jsonObject);
-	            options.typeParameters = jsonObject.typeParameters || [];
-	        }
-	        get typeParameters() {
-	            return this[_typeParameters];
-	        }
-	        /** @override */
-	        serializeInto(jsonObject) {
-	            super.serializeInto(jsonObject);
-	            const typeParameterObjects = [];
-	            for (const typeParameter of this.typeParameters) {
-	                typeParameterObjects.push({
-	                    typeParameterName: typeParameter.name,
-	                    constraintTokenRange: typeParameter.constraintExcerpt.tokenRange,
-	                    defaultTypeTokenRange: typeParameter.defaultTypeExcerpt.tokenRange
-	                });
-	            }
-	            if (typeParameterObjects.length > 0) {
-	                jsonObject.typeParameters = typeParameterObjects;
-	            }
-	        }
-	    }
-	    return MixedClass;
-	}
-	/**
-	 * Static members for {@link (ApiTypeParameterListMixin:interface)}.
-	 * @public
-	 */
-	(function (ApiTypeParameterListMixin) {
-	    /**
-	     * A type guard that tests whether the specified `ApiItem` subclass extends the `ApiParameterListMixin` mixin.
-	     *
-	     * @remarks
-	     *
-	     * The JavaScript `instanceof` operator cannot be used to test for mixin inheritance, because each invocation of
-	     * the mixin function produces a different subclass.  (This could be mitigated by `Symbol.hasInstance`, however
-	     * the TypeScript type system cannot invoke a runtime test.)
-	     */
-	    function isBaseClassOf(apiItem) {
-	        return apiItem.hasOwnProperty(_typeParameters);
-	    }
-	    ApiTypeParameterListMixin.isBaseClassOf = isBaseClassOf;
-	})(ApiTypeParameterListMixin || (ApiTypeParameterListMixin = {}));
 
 	// Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.
 	/**
@@ -11442,120 +11996,6 @@
 	        return DeclarationReference_2.empty();
 	    }
 	}
-
-	// Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.
-	// See LICENSE in the project root for license information.s
-	const _isStatic = Symbol('ApiStaticMixin._isStatic');
-	/**
-	 * Mixin function for {@link (ApiStaticMixin:interface)}.
-	 *
-	 * @param baseClass - The base class to be extended
-	 * @returns A child class that extends baseClass, adding the {@link (ApiStaticMixin:interface)} functionality.
-	 *
-	 * @public
-	 */
-	function ApiStaticMixin(baseClass) {
-	    class MixedClass extends baseClass {
-	        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-	        constructor(...args) {
-	            super(...args);
-	            const options = args[0];
-	            this[_isStatic] = options.isStatic;
-	        }
-	        /** @override */
-	        static onDeserializeInto(options, context, jsonObject) {
-	            baseClass.onDeserializeInto(options, context, jsonObject);
-	            options.isStatic = jsonObject.isStatic;
-	        }
-	        get isStatic() {
-	            return this[_isStatic];
-	        }
-	        /** @override */
-	        serializeInto(jsonObject) {
-	            super.serializeInto(jsonObject);
-	            jsonObject.isStatic = this.isStatic;
-	        }
-	    }
-	    return MixedClass;
-	}
-	/**
-	 * Static members for {@link (ApiStaticMixin:interface)}.
-	 * @public
-	 */
-	(function (ApiStaticMixin) {
-	    /**
-	     * A type guard that tests whether the specified `ApiItem` subclass extends the `ApiStaticMixin` mixin.
-	     *
-	     * @remarks
-	     *
-	     * The JavaScript `instanceof` operator cannot be used to test for mixin inheritance, because each invocation of
-	     * the mixin function produces a different subclass.  (This could be mitigated by `Symbol.hasInstance`, however
-	     * the TypeScript type system cannot invoke a runtime test.)
-	     */
-	    function isBaseClassOf(apiItem) {
-	        return apiItem.hasOwnProperty(_isStatic);
-	    }
-	    ApiStaticMixin.isBaseClassOf = isBaseClassOf;
-	})(ApiStaticMixin || (ApiStaticMixin = {}));
-
-	// Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.
-	const _returnTypeExcerpt = Symbol('ApiReturnTypeMixin._returnTypeExcerpt');
-	/**
-	 * Mixin function for {@link (ApiReturnTypeMixin:interface)}.
-	 *
-	 * @param baseClass - The base class to be extended
-	 * @returns A child class that extends baseClass, adding the {@link (ApiReturnTypeMixin:interface)} functionality.
-	 *
-	 * @public
-	 */
-	function ApiReturnTypeMixin(baseClass) {
-	    class MixedClass extends baseClass {
-	        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-	        constructor(...args) {
-	            super(...args);
-	            const options = args[0];
-	            if (this instanceof ApiDeclaredItem) {
-	                this[_returnTypeExcerpt] = this.buildExcerpt(options.returnTypeTokenRange);
-	            }
-	            else {
-	                throw new InternalError('ApiReturnTypeMixin expects a base class that inherits from ApiDeclaredItem');
-	            }
-	        }
-	        /** @override */
-	        static onDeserializeInto(options, context, jsonObject) {
-	            baseClass.onDeserializeInto(options, context, jsonObject);
-	            options.returnTypeTokenRange = jsonObject.returnTypeTokenRange;
-	        }
-	        get returnTypeExcerpt() {
-	            return this[_returnTypeExcerpt];
-	        }
-	        /** @override */
-	        serializeInto(jsonObject) {
-	            super.serializeInto(jsonObject);
-	            jsonObject.returnTypeTokenRange = this.returnTypeExcerpt.tokenRange;
-	        }
-	    }
-	    return MixedClass;
-	}
-	/**
-	 * Static members for {@link (ApiReturnTypeMixin:interface)}.
-	 * @public
-	 */
-	(function (ApiReturnTypeMixin) {
-	    /**
-	     * A type guard that tests whether the specified `ApiItem` subclass extends the `ApiReturnTypeMixin` mixin.
-	     *
-	     * @remarks
-	     *
-	     * The JavaScript `instanceof` operator cannot be used to test for mixin inheritance, because each invocation of
-	     * the mixin function produces a different subclass.  (This could be mitigated by `Symbol.hasInstance`, however
-	     * the TypeScript type system cannot invoke a runtime test.)
-	     */
-	    function isBaseClassOf(apiItem) {
-	        return apiItem.hasOwnProperty(_returnTypeExcerpt);
-	    }
-	    ApiReturnTypeMixin.isBaseClassOf = isBaseClassOf;
-	})(ApiReturnTypeMixin || (ApiReturnTypeMixin = {}));
 
 	// Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.
 	/**
@@ -11934,45 +12374,6 @@
 	        return (this.parent ? this.parent.canonicalReference : DeclarationReference_2.empty())
 	            .addNavigationStep("." /* Exports */, nameComponent)
 	            .withMeaning("interface" /* Interface */);
-	    }
-	}
-
-	// Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.
-	/**
-	 * The abstract base class for {@link ApiProperty} and {@link ApiPropertySignature}.
-	 *
-	 * @public
-	 */
-	class ApiPropertyItem extends ApiNameMixin(ApiReleaseTagMixin(ApiDeclaredItem)) {
-	    constructor(options) {
-	        super(options);
-	        this.propertyTypeExcerpt = this.buildExcerpt(options.propertyTypeTokenRange);
-	    }
-	    /** @override */
-	    static onDeserializeInto(options, context, jsonObject) {
-	        super.onDeserializeInto(options, context, jsonObject);
-	        options.propertyTypeTokenRange = jsonObject.propertyTypeTokenRange;
-	    }
-	    /**
-	     * Returns true if this property should be documented as an event.
-	     *
-	     * @remarks
-	     * The `@eventProperty` TSDoc modifier can be added to readonly properties to indicate that they return an
-	     * event object that event handlers can be attached to.  The event-handling API is implementation-defined, but
-	     * typically the return type would be a class with members such as `addHandler()` and `removeHandler()`.
-	     * The documentation should display such properties under an "Events" heading instead of the
-	     * usual "Properties" heading.
-	     */
-	    get isEventProperty() {
-	        if (this.tsdocComment) {
-	            return this.tsdocComment.modifierTagSet.isEventProperty();
-	        }
-	        return false;
-	    }
-	    /** @override */
-	    serializeInto(jsonObject) {
-	        super.serializeInto(jsonObject);
-	        jsonObject.propertyTypeTokenRange = this.propertyTypeExcerpt.tokenRange;
 	    }
 	}
 
@@ -12708,407 +13109,6 @@
 	            default:
 	                throw new Error(`Failed to deserialize unsupported API item type ${JSON.stringify(jsonObject.kind)}`);
 	        }
-	    }
-	}
-
-	// Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.
-	// PRIVATE - Allows ApiItemContainerMixin to assign the parent.
-	//
-	const apiItem_onParentChanged = Symbol('ApiItem._onAddToContainer');
-	/**
-	 * The abstract base class for all members of an `ApiModel` object.
-	 *
-	 * @remarks
-	 * This is part of the {@link ApiModel} hierarchy of classes, which are serializable representations of
-	 * API declarations.
-	 * @public
-	 */
-	class ApiItem {
-	    constructor(options) {
-	        // ("options" is not used here, but part of the inheritance pattern)
-	    }
-	    static deserialize(jsonObject, context) {
-	        return Deserializer.deserialize(context, jsonObject);
-	    }
-	    /** @virtual */
-	    static onDeserializeInto(options, context, jsonObject) {
-	        // (implemented by subclasses)
-	    }
-	    /** @virtual */
-	    serializeInto(jsonObject) {
-	        jsonObject.kind = this.kind;
-	        jsonObject.canonicalReference = this.canonicalReference.toString();
-	    }
-	    /**
-	     * Identifies the subclass of the `ApiItem` base class.
-	     * @virtual
-	     */
-	    get kind() {
-	        throw new Error('ApiItem.kind was not implemented by the child class');
-	    }
-	    /**
-	     * Warning: This API is used internally by API extractor but is not yet ready for general usage.
-	     *
-	     * @remarks
-	     *
-	     * Returns a `DeclarationReference` object using the experimental new declaration reference notation.
-	     *
-	     * @beta
-	     */
-	    get canonicalReference() {
-	        if (!this._canonicalReference) {
-	            try {
-	                this._canonicalReference = this.buildCanonicalReference();
-	            }
-	            catch (e) {
-	                const name = this.getScopedNameWithinPackage() || this.displayName;
-	                throw new InternalError(`Error building canonical reference for ${name}:\n`
-	                    + e.message);
-	            }
-	        }
-	        return this._canonicalReference;
-	    }
-	    /**
-	     * Returns a string key that can be used to efficiently retrieve an `ApiItem` from an `ApiItemContainerMixin`.
-	     * The key is unique within the container.  Its format is undocumented and may change at any time.
-	     *
-	     * @remarks
-	     * Use the `getContainerKey()` static member to construct the key.  Each subclass has a different implementation
-	     * of this function, according to the aspects that are important for identifying it.
-	     *
-	     * @virtual
-	     */
-	    get containerKey() {
-	        throw new InternalError('ApiItem.containerKey was not implemented by the child class');
-	    }
-	    /**
-	     * Returns a name for this object that can be used in diagnostic messages, for example.
-	     *
-	     * @remarks
-	     * For an object that inherits ApiNameMixin, this will return the declared name (e.g. the name of a TypeScript
-	     * function).  Otherwise, it will return a string such as "(call signature)" or "(model)".
-	     *
-	     * @virtual
-	     */
-	    get displayName() {
-	        switch (this.kind) {
-	            case "CallSignature" /* CallSignature */: return '(call)';
-	            case "Constructor" /* Constructor */: return '(constructor)';
-	            case "ConstructSignature" /* ConstructSignature */: return '(new)';
-	            case "IndexSignature" /* IndexSignature */: return '(indexer)';
-	            case "Model" /* Model */: return '(model)';
-	        }
-	        return '(???)'; // All other types should inherit ApiNameMixin which will override this property
-	    }
-	    /**
-	     * If this item was added to a ApiItemContainerMixin item, then this returns the container item.
-	     * If this is an Parameter that was added to a method or function, then this returns the function item.
-	     * Otherwise, it returns undefined.
-	     * @virtual
-	     */
-	    get parent() {
-	        return this._parent;
-	    }
-	    /**
-	     * This property supports a visitor pattern for walking the tree.
-	     * For items with ApiItemContainerMixin, it returns the contained items.
-	     * Otherwise it returns an empty array.
-	     * @virtual
-	     */
-	    get members() {
-	        return [];
-	    }
-	    /**
-	     * If this item has a name (i.e. extends `ApiNameMixin`), then return all items that have the same parent
-	     * and the same name.  Otherwise, return all items that have the same parent and the same `ApiItemKind`.
-	     *
-	     * @remarks
-	     * Examples: For a function, this would return all overloads for the function.  For a constructor, this would
-	     * return all overloads for the constructor.  For a merged declaration (e.g. a `namespace` and `enum` with the
-	     * same name), this would return both declarations.  If this item does not have a parent, or if it is the only
-	     * item of its name/kind, then the result is an array containing only this item.
-	     */
-	    getMergedSiblings() {
-	        const parent = this._parent;
-	        if (parent && ApiItemContainerMixin.isBaseClassOf(parent)) {
-	            return parent._getMergedSiblingsForMember(this);
-	        }
-	        return [];
-	    }
-	    /**
-	     * Returns the chain of ancestors, starting from the root of the tree, and ending with the this item.
-	     */
-	    getHierarchy() {
-	        const hierarchy = [];
-	        for (let current = this; current !== undefined; current = current.parent) {
-	            hierarchy.push(current);
-	        }
-	        hierarchy.reverse();
-	        return hierarchy;
-	    }
-	    /**
-	     * This returns a scoped name such as `"Namespace1.Namespace2.MyClass.myMember()"`.  It does not include the
-	     * package name or entry point.
-	     *
-	     * @remarks
-	     * If called on an ApiEntrypoint, ApiPackage, or ApiModel item, the result is an empty string.
-	     */
-	    getScopedNameWithinPackage() {
-	        const reversedParts = [];
-	        for (let current = this; current !== undefined; current = current.parent) {
-	            if (current.kind === "Model" /* Model */
-	                || current.kind === "Package" /* Package */
-	                || current.kind === "EntryPoint" /* EntryPoint */) {
-	                break;
-	            }
-	            if (reversedParts.length !== 0) {
-	                reversedParts.push('.');
-	            }
-	            else {
-	                switch (current.kind) {
-	                    case "CallSignature" /* CallSignature */:
-	                    case "ConstructSignature" /* ConstructSignature */:
-	                    case "Constructor" /* Constructor */:
-	                    case "IndexSignature" /* IndexSignature */:
-	                        // These functional forms don't have a proper name, so we don't append the "()" suffix
-	                        break;
-	                    default:
-	                        if (ApiParameterListMixin.isBaseClassOf(current)) {
-	                            reversedParts.push('()');
-	                        }
-	                }
-	            }
-	            reversedParts.push(current.displayName);
-	        }
-	        return reversedParts.reverse().join('');
-	    }
-	    /**
-	     * If this item is an ApiPackage or has an ApiPackage as one of its parents, then that object is returned.
-	     * Otherwise undefined is returned.
-	     */
-	    getAssociatedPackage() {
-	        for (let current = this; current !== undefined; current = current.parent) {
-	            if (current.kind === "Package" /* Package */) {
-	                return current;
-	            }
-	        }
-	        return undefined;
-	    }
-	    /** @virtual */
-	    getSortKey() {
-	        return this.containerKey;
-	    }
-	    /**
-	     * PRIVATE
-	     *
-	     * @privateRemarks
-	     * Allows ApiItemContainerMixin to assign the parent when the item is added to a container.
-	     *
-	     * @internal
-	     */
-	    [apiItem_onParentChanged](parent) {
-	        this._parent = parent;
-	        this._canonicalReference = undefined;
-	    }
-	    /**
-	     * Builds the cached object used by the `canonicalReference` property.
-	     * @virtual
-	     */
-	    buildCanonicalReference() {
-	        throw new InternalError('ApiItem.canonicalReference was not implemented by the child class');
-	    }
-	}
-
-	// Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.
-	/**
-	 * An abstract base class for API declarations that can have an associated TSDoc comment.
-	 *
-	 * @remarks
-	 *
-	 * This is part of the {@link ApiModel} hierarchy of classes, which are serializable representations of
-	 * API declarations.
-	 *
-	 * @public
-	 */
-	class ApiDocumentedItem extends ApiItem {
-	    constructor(options) {
-	        super(options);
-	        this._tsdocComment = options.docComment;
-	    }
-	    /** @override */
-	    static onDeserializeInto(options, context, jsonObject) {
-	        super.onDeserializeInto(options, context, jsonObject);
-	        const documentedJson = jsonObject;
-	        if (documentedJson.docComment) {
-	            const tsdocParser = new lib_19(AedocDefinitions.tsdocConfiguration);
-	            // NOTE: For now, we ignore TSDoc errors found in a serialized .api.json file.
-	            // Normally these errors would have already been reported by API Extractor during analysis.
-	            // However, they could also arise if the JSON file was edited manually, or if the file was saved
-	            // using a different release of the software that used an incompatible syntax.
-	            const parserContext = tsdocParser.parseString(documentedJson.docComment);
-	            options.docComment = parserContext.docComment;
-	        }
-	    }
-	    get tsdocComment() {
-	        return this._tsdocComment;
-	    }
-	    /** @override */
-	    serializeInto(jsonObject) {
-	        super.serializeInto(jsonObject);
-	        if (this.tsdocComment !== undefined) {
-	            jsonObject.docComment = this.tsdocComment.emitAsTsdoc();
-	        }
-	        else {
-	            jsonObject.docComment = '';
-	        }
-	    }
-	}
-
-	// Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.
-	/** @public */
-	class ExcerptToken {
-	    constructor(kind, text, canonicalReference) {
-	        this._kind = kind;
-	        // Standardize the newlines across operating systems. Even though this may deviate from the actual
-	        // input source file that was parsed, it's useful because the newline gets serialized inside
-	        // a string literal in .api.json, which cannot be automatically normalized by Git.
-	        this._text = Text.convertToLf(text);
-	        this._canonicalReference = canonicalReference;
-	    }
-	    get kind() {
-	        return this._kind;
-	    }
-	    get text() {
-	        return this._text;
-	    }
-	    get canonicalReference() {
-	        return this._canonicalReference;
-	    }
-	}
-	/**
-	 * This class is used by {@link ApiDeclaredItem} to represent a source code excerpt containing
-	 * a TypeScript declaration.
-	 *
-	 * @remarks
-	 *
-	 * The main excerpt is parsed into an array of tokens, and the main excerpt's token range will span all of these
-	 * tokens.  The declaration may also have have "captured" excerpts, which are other subranges of tokens.
-	 * For example, if the main excerpt is a function declaration, it will also have a captured excerpt corresponding
-	 * to the return type of the function.
-	 *
-	 * An excerpt may be empty (i.e. a token range containing zero tokens).  For example, if a function's return value
-	 * is not explicitly declared, then the returnTypeExcerpt will be empty.  By contrast, a class constructor cannot
-	 * have a return value, so ApiConstructor has no returnTypeExcerpt property at all.
-	 *
-	 * @public
-	 */
-	class Excerpt {
-	    constructor(tokens, tokenRange) {
-	        this.tokens = tokens;
-	        this.tokenRange = tokenRange;
-	        if (this.tokenRange.startIndex < 0 || this.tokenRange.endIndex > this.tokens.length
-	            || this.tokenRange.startIndex > this.tokenRange.endIndex) {
-	            throw new Error('Invalid token range');
-	        }
-	    }
-	    get text() {
-	        if (this._text === undefined) {
-	            this._text = this.tokens.slice(this.tokenRange.startIndex, this.tokenRange.endIndex)
-	                .map(x => x.text).join('');
-	        }
-	        return this._text;
-	    }
-	    get isEmpty() {
-	        return this.tokenRange.startIndex === this.tokenRange.endIndex;
-	    }
-	}
-
-	// Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.
-	/**
-	 * The base class for API items that have an associated source code excerpt containing a TypeScript declaration.
-	 *
-	 * @remarks
-	 *
-	 * This is part of the {@link ApiModel} hierarchy of classes, which are serializable representations of
-	 * API declarations.
-	 *
-	 * Most `ApiItem` subclasses have declarations and thus extend `ApiDeclaredItem`.  Counterexamples include
-	 * `ApiModel` and `ApiPackage`, which do not have any corresponding TypeScript source code.
-	 *
-	 * @public
-	 */
-	// eslint-disable-next-line @typescript-eslint/interface-name-prefix
-	class ApiDeclaredItem extends ApiDocumentedItem {
-	    constructor(options) {
-	        super(options);
-	        this._excerptTokens = options.excerptTokens.map(token => {
-	            const canonicalReference = token.canonicalReference === undefined ? undefined :
-	                DeclarationReference_2.parse(token.canonicalReference);
-	            return new ExcerptToken(token.kind, token.text, canonicalReference);
-	        });
-	        this._excerpt = new Excerpt(this.excerptTokens, { startIndex: 0, endIndex: this.excerptTokens.length });
-	    }
-	    /** @override */
-	    static onDeserializeInto(options, context, jsonObject) {
-	        super.onDeserializeInto(options, context, jsonObject);
-	        options.excerptTokens = jsonObject.excerptTokens;
-	    }
-	    /**
-	     * The source code excerpt where the API item is declared.
-	     */
-	    get excerpt() {
-	        return this._excerpt;
-	    }
-	    /**
-	     * The individual source code tokens that comprise the main excerpt.
-	     */
-	    get excerptTokens() {
-	        return this._excerptTokens;
-	    }
-	    /**
-	     * If the API item has certain important modifier tags such as `@sealed`, `@virtual`, or `@override`,
-	     * this prepends them as a doc comment above the excerpt.
-	     */
-	    getExcerptWithModifiers() {
-	        const excerpt = this.excerpt.text;
-	        const modifierTags = [];
-	        if (excerpt.length > 0) {
-	            if (this instanceof ApiDocumentedItem) {
-	                if (this.tsdocComment) {
-	                    if (this.tsdocComment.modifierTagSet.isSealed()) {
-	                        modifierTags.push('@sealed');
-	                    }
-	                    if (this.tsdocComment.modifierTagSet.isVirtual()) {
-	                        modifierTags.push('@virtual');
-	                    }
-	                    if (this.tsdocComment.modifierTagSet.isOverride()) {
-	                        modifierTags.push('@override');
-	                    }
-	                }
-	                if (modifierTags.length > 0) {
-	                    return '/** ' + modifierTags.join(' ') + ' */\n'
-	                        + excerpt;
-	                }
-	            }
-	        }
-	        return excerpt;
-	    }
-	    /** @override */
-	    serializeInto(jsonObject) {
-	        super.serializeInto(jsonObject);
-	        jsonObject.excerptTokens = this.excerptTokens.map(x => {
-	            const excerptToken = { kind: x.kind, text: x.text };
-	            if (x.canonicalReference !== undefined) {
-	                excerptToken.canonicalReference = x.canonicalReference.toString();
-	            }
-	            return excerptToken;
-	        });
-	    }
-	    /**
-	     * Constructs a new {@link Excerpt} corresponding to the provided token range.
-	     */
-	    buildExcerpt(tokenRange) {
-	        return new Excerpt(this.excerptTokens, tokenRange);
 	    }
 	}
 
@@ -14902,8 +14902,9 @@
 
 	var model = new ApiModel();
 	var apiPackage = model.loadPackageFromJsonObject(data);
-	console.log(model, apiPackage);
-	debugger;
+	console.log(model);
+	console.log(apiPackage);
+	// debugger;
 	// import * as tsdoc from "@microsoft/tsdoc";
 	// console.log(tsdoc);
 

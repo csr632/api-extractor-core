@@ -6,9 +6,10 @@ const model = new ApiModel();
 
 const apiPackage: ApiPackage = model.loadPackageFromJsonObject(data as any);
 
-console.log(model, apiPackage);
+console.log(model);
+console.log(apiPackage);
 
-debugger;
+// debugger;
 
 // import * as tsdoc from "@microsoft/tsdoc";
 // console.log(tsdoc);

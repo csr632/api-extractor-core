@@ -1,10 +1,10 @@
 // Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.
 // See LICENSE in the project root for license information.
 
-import { Excerpt, IExcerptTokenRange } from '../mixins/Excerpt';
-import { IApiDeclaredItemOptions, ApiDeclaredItem, IApiDeclaredItemJson } from '../items/ApiDeclaredItem';
-import { ApiReleaseTagMixin, IApiReleaseTagMixinOptions } from '../mixins/ApiReleaseTagMixin';
-import { IApiNameMixinOptions, ApiNameMixin } from '../mixins/ApiNameMixin';
+import { Excerpt, IExcerptTokenRange } from '../__index';
+import { IApiDeclaredItemOptions, ApiDeclaredItem, IApiDeclaredItemJson } from '../__index';
+import { ApiReleaseTagMixin, IApiReleaseTagMixinOptions } from '../__index';
+import { IApiNameMixinOptions, ApiNameMixin } from '../__index';
 import { DeserializerContext } from '../model/DeserializerContext';
 
 /**

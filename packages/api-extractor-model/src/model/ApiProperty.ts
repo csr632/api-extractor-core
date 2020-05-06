@@ -2,9 +2,9 @@
 // See LICENSE in the project root for license information.
 
 import { DeclarationReference, Meaning, Navigation, Component } from '@microsoft/tsdoc/lib/beta/DeclarationReference';
-import { ApiItemKind } from '../items/ApiItem';
-import { ApiStaticMixin, IApiStaticMixinOptions } from '../mixins/ApiStaticMixin';
-import { ApiPropertyItem, IApiPropertyItemOptions } from '../items/ApiPropertyItem';
+import { ApiItemKind } from '../__index';
+import { ApiStaticMixin, IApiStaticMixinOptions } from '../__index';
+import { ApiPropertyItem, IApiPropertyItemOptions } from '../__index';
 
 /**
  * Constructor options for {@link ApiProperty}.

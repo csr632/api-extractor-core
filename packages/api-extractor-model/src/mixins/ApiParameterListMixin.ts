@@ -1,9 +1,9 @@
 // Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.
 // See LICENSE in the project root for license information.s
 
-import { ApiItem, IApiItemJson, IApiItemConstructor, IApiItemOptions } from '../items/ApiItem';
+import { ApiItem, IApiItemJson, IApiItemConstructor, IApiItemOptions } from '../__index';
 import { Parameter } from '../model/Parameter';
-import { ApiDeclaredItem } from '../items/ApiDeclaredItem';
+import { ApiDeclaredItem } from '../__index';
 import { IExcerptTokenRange } from './Excerpt';
 import { InternalError } from '@csr632/common-helpers';
 import { DeserializerContext } from '../model/DeserializerContext';

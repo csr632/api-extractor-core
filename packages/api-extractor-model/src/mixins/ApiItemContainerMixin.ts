@@ -8,7 +8,7 @@ import {
   IApiItemOptions,
   IApiItemConstructor,
   ApiItemKind
-} from '../items/ApiItem';
+} from '../__index';
 import { ApiNameMixin } from './ApiNameMixin';
 import { DeserializerContext } from '../model/DeserializerContext';
 import { InternalError } from '@csr632/common-helpers';

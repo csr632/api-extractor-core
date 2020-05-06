@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.
 // See LICENSE in the project root for license information.
 
-import { IApiItemJson, IApiItemOptions, ApiItem, ApiItemKind } from '../items/ApiItem';
+import { IApiItemJson, IApiItemOptions, ApiItem, ApiItemKind } from '../__index';
 import { ApiClass, IApiClassOptions, IApiClassJson } from './ApiClass';
 import { ApiEntryPoint, IApiEntryPointOptions } from './ApiEntryPoint';
 import { ApiMethod, IApiMethodOptions } from './ApiMethod';
@@ -14,7 +14,7 @@ import { ApiMethodSignature, IApiMethodSignatureOptions } from './ApiMethodSigna
 import { ApiProperty, IApiPropertyOptions } from './ApiProperty';
 import { ApiEnumMember, IApiEnumMemberOptions, IApiEnumMemberJson } from './ApiEnumMember';
 import { ApiEnum, IApiEnumOptions } from './ApiEnum';
-import { IApiPropertyItemJson } from '../items/ApiPropertyItem';
+import { IApiPropertyItemJson } from '../__index';
 import { ApiConstructor, IApiConstructorOptions } from './ApiConstructor';
 import { ApiConstructSignature, IApiConstructSignatureOptions } from './ApiConstructSignature';
 import { ApiFunction, IApiFunctionOptions } from './ApiFunction';
@@ -22,7 +22,7 @@ import { ApiCallSignature, IApiCallSignatureOptions } from './ApiCallSignature';
 import { ApiIndexSignature, IApiIndexSignatureOptions } from './ApiIndexSignature';
 import { ApiTypeAlias, IApiTypeAliasOptions, IApiTypeAliasJson } from './ApiTypeAlias';
 import { ApiVariable, IApiVariableOptions, IApiVariableJson } from './ApiVariable';
-import { IApiDeclaredItemJson } from '../items/ApiDeclaredItem';
+import { IApiDeclaredItemJson } from '../__index';
 import { DeserializerContext } from './DeserializerContext';
 
 export class Deserializer {

@@ -2,15 +2,15 @@
 // See LICENSE in the project root for license information.
 
 import { DeclarationReference } from '@microsoft/tsdoc/lib/beta/DeclarationReference';
-import { Constructor, PropertiesOf } from '../mixins/Mixin';
+import { Constructor, PropertiesOf } from '../__index';
 import { ApiPackage } from '../model/ApiPackage';
 import { DeserializerContext } from '../model/DeserializerContext';
 import { InternalError } from '@csr632/common-helpers';
 // These three classes may introduce some circular imports:
 // ApiParameterListMixin, ApiItemContainerMixin, Deserializer
-import { ApiParameterListMixin } from '../mixins/ApiParameterListMixin';
-import { ApiItemContainerMixin } from '../mixins/ApiItemContainerMixin';
-import { Deserializer } from "../model/Deserializer";
+import { ApiParameterListMixin } from '../__index';
+import { ApiItemContainerMixin } from '../__index';
+import { Deserializer } from "../__index";
 
 /**
  * The type returned by the {@link ApiItem.kind} property, which can be used to easily distinguish subclasses of

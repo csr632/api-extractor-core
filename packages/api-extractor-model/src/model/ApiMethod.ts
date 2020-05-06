@@ -2,14 +2,14 @@
 // See LICENSE in the project root for license information.
 
 import { DeclarationReference, Meaning, Navigation, Component } from '@microsoft/tsdoc/lib/beta/DeclarationReference';
-import { ApiItemKind } from '../items/ApiItem';
-import { ApiStaticMixin, IApiStaticMixinOptions } from '../mixins/ApiStaticMixin';
-import { IApiDeclaredItemOptions, ApiDeclaredItem } from '../items/ApiDeclaredItem';
-import { IApiParameterListMixinOptions, ApiParameterListMixin } from '../mixins/ApiParameterListMixin';
-import { IApiReleaseTagMixinOptions, ApiReleaseTagMixin } from '../mixins/ApiReleaseTagMixin';
-import { ApiReturnTypeMixin, IApiReturnTypeMixinOptions } from '../mixins/ApiReturnTypeMixin';
-import { IApiNameMixinOptions, ApiNameMixin } from '../mixins/ApiNameMixin';
-import { ApiTypeParameterListMixin, IApiTypeParameterListMixinOptions } from '../mixins/ApiTypeParameterListMixin';
+import { ApiItemKind } from '../__index';
+import { ApiStaticMixin, IApiStaticMixinOptions } from '../__index';
+import { IApiDeclaredItemOptions, ApiDeclaredItem } from '../__index';
+import { IApiParameterListMixinOptions, ApiParameterListMixin } from '../__index';
+import { IApiReleaseTagMixinOptions, ApiReleaseTagMixin } from '../__index';
+import { ApiReturnTypeMixin, IApiReturnTypeMixinOptions } from '../__index';
+import { IApiNameMixinOptions, ApiNameMixin } from '../__index';
+import { ApiTypeParameterListMixin, IApiTypeParameterListMixinOptions } from '../__index';
 
 /**
  * Constructor options for {@link ApiMethod}.

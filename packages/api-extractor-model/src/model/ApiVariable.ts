@@ -2,11 +2,11 @@
 // See LICENSE in the project root for license information.
 
 import { DeclarationReference, Meaning, Navigation, Component } from '@microsoft/tsdoc/lib/beta/DeclarationReference';
-import { ApiItemKind } from '../items/ApiItem';
-import { ApiDeclaredItem, IApiDeclaredItemOptions, IApiDeclaredItemJson } from '../items/ApiDeclaredItem';
-import { ApiReleaseTagMixin, IApiReleaseTagMixinOptions } from '../mixins/ApiReleaseTagMixin';
-import { IApiNameMixinOptions, ApiNameMixin } from '../mixins/ApiNameMixin';
-import { IExcerptTokenRange, Excerpt } from '../mixins/Excerpt';
+import { ApiItemKind } from '../__index';
+import { ApiDeclaredItem, IApiDeclaredItemOptions, IApiDeclaredItemJson } from '../__index';
+import { ApiReleaseTagMixin, IApiReleaseTagMixinOptions } from '../__index';
+import { IApiNameMixinOptions, ApiNameMixin } from '../__index';
+import { IExcerptTokenRange, Excerpt } from '../__index';
 import { DeserializerContext } from './DeserializerContext';
 
 /**
